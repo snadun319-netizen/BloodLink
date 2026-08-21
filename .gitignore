@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment variables - NEVER commit secrets
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.apk
+*.aab
+
+# Mobile
+.expo/
+ios/Pods/
+android/app/build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Verification documents / uploaded files (never commit real data)
+uploads/
+*.pem
+*.key
