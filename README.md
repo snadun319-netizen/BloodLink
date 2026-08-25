@@ -1,15 +1,5 @@
 # BloodLink - Smart Blood Donation Coordination System
 
-SE5104 Mini Project | Group 7 | Sabaragamuwa University of Sri Lanka
-
-## Team
-| Member | Reg No | Module |
-|---|---|---|
-| M.A.K.C Mallikaarachchi | 22CSE0587 | Donor Mobile Application & Donor Coordination UI |
-| R.M.I. Hasanjali | 22CSE0588 | Hospital/Blood-Bank Dashboard & Blood Request Workflow |
-| K.M. Wijerathna | 22CSE0355 | Donor Matching & Notification Module |
-| E.M.N.S. Abeyrathna | 22CSE0382 | Administration, Verification & Security Module |
-
 ## Repository Structure
 ```
 BloodLink/
