@@ -6,6 +6,7 @@ on:
 
 jobs:
   backend-checks:
+    if: ${{ hashFiles('backend/package.json') != '' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -15,16 +16,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - if: ${{ hashFiles('backend/package.json') != '' }}
-        run: npm install
-      - if: ${{ hashFiles('backend/package.json') != '' }}
-        run: npm run lint --if-present
-      - if: ${{ hashFiles('backend/package.json') != '' }}
-        run: npm run type-check --if-present
-      - if: ${{ hashFiles('backend/package.json') != '' }}
-        run: npm test --if-present
+      - run: npm install
+      - run: npm run lint --if-present
+      - run: npm run type-check --if-present
+      - run: npm test --if-present
 
   web-dashboard-checks:
+    if: ${{ hashFiles('web-dashboard/package.json') != '' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -34,9 +32,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - if: ${{ hashFiles('web-dashboard/package.json') != '' }}
-        run: npm install
-      - if: ${{ hashFiles('web-dashboard/package.json') != '' }}
-        run: npm run lint --if-present
-      - if: ${{ hashFiles('web-dashboard/package.json') != '' }}
-        run: npm test --if-present
+      - run: npm install
+      - run: npm run lint --if-present
+      - run: npm test --if-present
