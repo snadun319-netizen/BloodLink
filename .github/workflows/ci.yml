@@ -15,10 +15,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
-      - run: npm run lint --if-present
-      - run: npm run type-check --if-present
-      - run: npm test --if-present
+      - if: ${{ hashFiles('backend/package.json') != '' }}
+        run: npm install
+      - if: ${{ hashFiles('backend/package.json') != '' }}
+        run: npm run lint --if-present
+      - if: ${{ hashFiles('backend/package.json') != '' }}
+        run: npm run type-check --if-present
+      - if: ${{ hashFiles('backend/package.json') != '' }}
+        run: npm test --if-present
 
   web-dashboard-checks:
     runs-on: ubuntu-latest
@@ -30,6 +34,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
-      - run: npm run lint --if-present
-      - run: npm test --if-present
+      - if: ${{ hashFiles('web-dashboard/package.json') != '' }}
+        run: npm install
+      - if: ${{ hashFiles('web-dashboard/package.json') != '' }}
+        run: npm run lint --if-present
+      - if: ${{ hashFiles('web-dashboard/package.json') != '' }}
+        run: npm test --if-present
