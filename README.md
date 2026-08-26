@@ -14,9 +14,9 @@
 
 ---
 
-## 🌟 Key Features
+## Key Features
 
-### 📱 1. Donor Mobile Application (React Native + TypeScript)
+### 1. Donor Mobile Application (React Native + TypeScript)
 * **Donor Profiles & Registration**: Register with personal details and blood group verification.
 * **Document Verification**: Upload medical/official documents to verify blood group authenticity.
 * **Availability Toggle**: Donors can toggle their availability status (`Available` / `Unavailable`).
@@ -24,17 +24,17 @@
 * **Donation History & Eligibility Tracking**: Automatically tracks past donations and calculates the next eligible donation date (e.g. 3-month medical interval).
 * **Push Notifications**: Receive instant emergency push alerts when matching blood is urgently needed nearby.
 
-### 💻 2. Hospital & Blood Bank Web Dashboard (React + TypeScript)
+### 2. Hospital & Blood Bank Web Dashboard (React + TypeScript)
 * **Blood Stock Inventory**: Monitor and manage stock levels per blood group with clear status indicators (`Normal`, `Low`, `Critical`).
 * **Request Creation**: Post targeted blood requests categorized by priority (`Normal`, `Urgent`, `Emergency`).
 * **Donor Response Tracking**: Track real-time donor responses (Accept/Decline) to active requests.
 
-### ⚡ 3. Smart Donor Matching Engine (Node.js + PostGIS)
+### 3. Smart Donor Matching Engine (Node.js + PostGIS)
 * **Multi-Criteria Filtering**: Matches donors based on **Verified Blood Group**, **Eligibility Interval**, and **Availability**.
 * **Geospatial Proximity Radius**: Uses PostGIS spatial queries (`ST_DWithin`) to find donors within a target radius from the requesting institution.
 * **Targeted Dispatch**: Delivers push notifications via Firebase Cloud Messaging (FCM) *only* to eligible, nearby donors, avoiding notification fatigue.
 
-### 🛡️ 4. Administration, Verification & Security
+### 4. Administration, Verification & Security
 * **Institution Approval**: Verification workflow for participating hospitals, blood banks, and staff accounts.
 * **Document Review**: Admin interface to inspect and verify uploaded donor blood group proof.
 * **Role-Based Access Control (RBAC)**: Strict permission boundaries for Donors, Hospital Staff, and Administrators.
@@ -42,7 +42,7 @@
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
                                   +------------------------------+
@@ -68,7 +68,7 @@
 
 ---
 
-## 📦 Project Modules & Ownership
+## Project Modules & Ownership
 
 The project is structured into four core engineering modules:
 
@@ -81,7 +81,7 @@ The project is structured into four core engineering modules:
 
 ---
 
-## 📂 Repository Structure
+## Repository Structure
 
 ```
 BloodLink/
@@ -112,7 +112,7 @@ BloodLink/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 * **Node.js**: `v20.x` or higher *(Tested on v24.x)*
@@ -158,14 +158,14 @@ npm run dev
 
 ---
 
-## 📄 Documentation
+## Documentation
 
-* 📖 **[Comprehensive Technical Project Overview](file:///d:/Programming/Github/BloodLink/BloodLink/docs/PROJECT_OVERVIEW.md)** — Exhaustive documentation covering problem statement, gap analysis, functional/non-functional requirements, database ER diagram, security & PDPA compliance, and testing plan.
-* 🤝 **[Contribution Guidelines](file:///d:/Programming/Github/BloodLink/BloodLink/docs/CONTRIBUTING.md)** — Branching rules, PR guidelines, and commit standards.
+* **[Comprehensive Technical Project Overview](file:///d:/Programming/Github/BloodLink/BloodLink/docs/PROJECT_OVERVIEW.md)** — Exhaustive documentation covering problem statement, gap analysis, functional/non-functional requirements, database ER diagram, security & PDPA compliance, and testing plan.
+* **[Contribution Guidelines](file:///d:/Programming/Github/BloodLink/BloodLink/docs/CONTRIBUTING.md)** — Branching rules, PR guidelines, and commit standards.
 
 ---
 
-## 🔒 Security & Privacy Statement
+## Security & Privacy Statement
 
 BloodLink processes personal information, including blood groups and location data, subject to **Sri Lanka's Personal Data Protection Act (PDPA) No. 9 of 2022**. 
 * Donor location coordinates are used exclusively server-side for radius matching and are **never exposed to other users or public APIs**.
