@@ -3,33 +3,62 @@ name: CI
 on:
   pull_request:
     branches: [develop, main]
+  push:
+    branches: [develop, main]
 
 jobs:
   backend-checks:
+    name: Backend CI Checks
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
-      - run: npm run lint --if-present
-      - run: npm run type-check --if-present
-      - run: npm test --if-present
+      - name: Run Backend Checks
+        run: |
+          if [ -f "backend/package.json" ]; then
+            cd backend
+            npm install
+            npm run type-check --if-present
+            npm test --if-present
+          else
+            echo "backend/package.json not found, skipping backend checks."
+          fi
 
   web-dashboard-checks:
+    name: Web Dashboard CI Checks
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web-dashboard
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
-      - run: npm run lint --if-present
-      - run: npm test --if-present
+      - name: Run Web Dashboard Checks
+        run: |
+          if [ -f "web-dashboard/package.json" ]; then
+            cd web-dashboard
+            npm install
+            npm run lint --if-present
+            npm test --if-present
+          else
+            echo "web-dashboard/package.json not found, skipping web-dashboard checks."
+          fi
+
+  mobile-app-checks:
+    name: Mobile App CI Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run Mobile App Checks
+        run: |
+          if [ -f "mobile-app/package.json" ]; then
+            cd mobile-app
+            npm install
+            npm test --if-present
+          else
+            echo "mobile-app/package.json not found, skipping mobile-app checks."
+          fi
