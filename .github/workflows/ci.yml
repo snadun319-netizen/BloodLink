@@ -1,35 +1,152 @@
 name: CI
-
 on:
+  push:
+    branches:
+      - develop
+      - main
+
   pull_request:
-    branches: [develop, main]
+    branches:
+      - develop
+      - main
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  backend-checks:
+
+  # =====================================================
+  # BACKEND
+  # =====================================================
+  backend:
+    name: Backend Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     defaults:
       run:
         working-directory: backend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-      - run: npm install
-      - run: npm run lint --if-present
-      - run: npm run type-check --if-present
-      - run: npm test --if-present
 
-  web-dashboard-checks:
+    steps:
+      # Download repository code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      # TypeScript type checking
+      - name: Type check
+        run: npm run type-check --if-present
+
+      # Check code quality
+      - name: Lint
+        run: npm run lint --if-present
+
+      # Run tests
+      - name: Test
+        run: npm test --if-present
+
+      # Make sure project can build
+      - name: Build
+        run: npm run build --if-present
+
+
+  # =====================================================
+  # WEB DASHBOARD
+  # =====================================================
+  web-dashboard:
+    name: Web Dashboard Checks
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     defaults:
       run:
         working-directory: web-dashboard
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
-      - run: npm install
-      - run: npm run lint --if-present
-      - run: npm test --if-present
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Type check
+        run: npm run type-check --if-present
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test
+        run: npm test --if-present
+
+      - name: Build
+        run: npm run build --if-present
+
+
+  # =====================================================
+  # MOBILE APP
+  # =====================================================
+  mobile-app:
+    name: Mobile App Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: mobile-app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Type check
+        run: npm run type-check --if-present
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test
+        run: npm test --if-present
+
+      - name: Build
+        run: npm run build --if-present

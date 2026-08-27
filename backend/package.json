@@ -7,9 +7,10 @@
     "test": "tests"
   },
   "scripts": {
-  "dev": "ts-node-dev src/index.ts",
-  "test": "echo \"Error: no test specified\" && exit 1"
-},
+    "dev": "ts-node-dev src/index.ts",
+    "type-check": "tsc --noEmit",
+    "test": "echo \"No tests specified yet\""
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
