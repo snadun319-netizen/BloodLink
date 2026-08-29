@@ -4,6 +4,7 @@ import { pool } from "./db";
 import authRoutes from "./routes/auth.routes";
 import { authenticate } from "./middleware/auth.middleware";
 import organizationRoutes from "./routes/organization.routes";
+import donorVerificationRoutes from "./routes/donorVerification.routes";
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ const PORT = process.env.PORT || 4000;
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/organizations", organizationRoutes);
+app.use("/api/donors", donorVerificationRoutes);
 
 app.get("/api/health", async (req, res) => {
   try {
