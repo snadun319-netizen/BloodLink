@@ -5,6 +5,7 @@ import authRoutes from "./routes/auth.routes";
 import { authenticate } from "./middleware/auth.middleware";
 import organizationRoutes from "./routes/organization.routes";
 import donorVerificationRoutes from "./routes/donorVerification.routes";
+import staffRoutes from "./routes/staff.routes";
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/donors", donorVerificationRoutes);
+app.use("/api/staff", staffRoutes);
 
 app.get("/api/health", async (req, res) => {
   try {
