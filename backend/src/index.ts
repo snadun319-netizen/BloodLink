@@ -3,13 +3,16 @@ import dotenv from "dotenv";
 import { pool } from "./db";
 import authRoutes from "./routes/auth.routes";
 import { authenticate } from "./middleware/auth.middleware";
+import organizationRoutes from "./routes/organization.routes";
 
 dotenv.config();
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 app.use(express.json());
 app.use("/api/auth", authRoutes);
+app.use("/api/organizations", organizationRoutes);
 
 app.get("/api/health", async (req, res) => {
   try {
