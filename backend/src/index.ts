@@ -6,6 +6,7 @@ import { authenticate } from "./middleware/auth.middleware";
 import organizationRoutes from "./routes/organization.routes";
 import donorVerificationRoutes from "./routes/donorVerification.routes";
 import staffRoutes from "./routes/staff.routes";
+import adminRoutes from "./routes/admin.routes";
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/organizations", organizationRoutes);
 app.use("/api/donors", donorVerificationRoutes);
 app.use("/api/staff", staffRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/api/health", async (req, res) => {
   try {
