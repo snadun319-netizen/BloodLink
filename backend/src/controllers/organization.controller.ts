@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
+import { logAudit } from "../services/audit.service";
 
 export async function registerOrganization(req: Request, res: Response) {
   const { name, type, registrationEvidenceUrl } = req.body;
@@ -63,6 +64,14 @@ export async function approveOrganization(req: Request, res: Response) {
         .json({ error: "Organization not found or already processed" });
     }
 
+    await logAudit({
+      actorUserId: adminId,
+      action: "ORGANIZATION_APPROVED",
+      targetType: "organization",
+      targetId: id as string,
+      metadata: { organizationName: result.rows[0].name },
+    });
+
     return res.status(200).json({ organization: result.rows[0] });
   } catch (err) {
     console.error("Approve organization error:", err);
@@ -88,6 +97,14 @@ export async function rejectOrganization(req: Request, res: Response) {
         .status(404)
         .json({ error: "Organization not found or already processed" });
     }
+
+    await logAudit({
+      actorUserId: adminId,
+      action: "ORGANIZATION_REJECTED",
+      targetType: "organization",
+      targetId: id as string,
+      metadata: { organizationName: result.rows[0].name },
+    });
 
     return res.status(200).json({ organization: result.rows[0] });
   } catch (err) {

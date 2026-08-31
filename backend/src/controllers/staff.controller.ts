@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
 import { hashPassword } from "../services/password.service";
+import { logAudit } from "../services/audit.service";
 
 export async function registerStaff(req: Request, res: Response) {
   const { email, password, role, organizationId } = req.body;
@@ -75,6 +76,7 @@ export async function listPendingStaff(req: Request, res: Response) {
 
 export async function approveStaff(req: Request, res: Response) {
   const { id } = req.params;
+  const adminId = (req as any).user.id;
 
   try {
     const result = await pool.query(
@@ -91,6 +93,14 @@ export async function approveStaff(req: Request, res: Response) {
         .json({ error: "Staff member not found or already processed" });
     }
 
+    await logAudit({
+      actorUserId: adminId,
+      action: "STAFF_APPROVED",
+      targetType: "user",
+      targetId: id as string,
+      metadata: { email: result.rows[0].email, role: result.rows[0].role },
+    });
+
     return res.status(200).json({ user: result.rows[0] });
   } catch (err) {
     console.error("Approve staff error:", err);
@@ -100,6 +110,7 @@ export async function approveStaff(req: Request, res: Response) {
 
 export async function rejectStaff(req: Request, res: Response) {
   const { id } = req.params;
+  const adminId = (req as any).user.id;
 
   try {
     const result = await pool.query(
@@ -114,6 +125,14 @@ export async function rejectStaff(req: Request, res: Response) {
         .status(404)
         .json({ error: "Staff member not found or already processed" });
     }
+
+    await logAudit({
+      actorUserId: adminId,
+      action: "STAFF_REJECTED",
+      targetType: "user",
+      targetId: id as string,
+      metadata: { email: result.rows[0].email },
+    });
 
     return res
       .status(200)
