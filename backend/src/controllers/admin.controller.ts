@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
+import { logAudit } from "../services/audit.service";
 
 export async function listUsers(req: Request, res: Response) {
   const { role, status } = req.query;
@@ -54,6 +55,14 @@ export async function updateUserStatus(req: Request, res: Response) {
       return res.status(404).json({ error: "User not found" });
     }
 
+    await logAudit({
+      actorUserId: adminId,
+      action: status === "active" ? "USER_ACTIVATED" : "USER_SUSPENDED",
+      targetType: "user",
+      targetId: id as string,
+      metadata: { email: result.rows[0].email, role: result.rows[0].role },
+    });
+
     return res.status(200).json({ user: result.rows[0] });
   } catch (err) {
     console.error("Update user status error:", err);
@@ -100,6 +109,38 @@ export async function getDashboardStats(req: Request, res: Response) {
     });
   } catch (err) {
     console.error("Get dashboard stats error:", err);
+    return res.status(500).json({ error: "Something went wrong" });
+  }
+}
+
+export async function listAuditLogs(req: Request, res: Response) {
+  const { action, limit } = req.query;
+
+  try {
+    let query = `
+      SELECT al.id, al.action, al.target_type, al.target_id, al.metadata,
+             al.created_at, u.email AS actor_email
+      FROM audit_logs al
+      JOIN users u ON al.actor_user_id = u.id
+      WHERE 1=1
+    `;
+    const params: string[] = [];
+
+    if (action) {
+      params.push(action as string);
+      query += ` AND al.action = $${params.length}`;
+    }
+
+    query += ` ORDER BY al.created_at DESC`;
+
+    const maxLimit = limit ? Math.min(parseInt(limit as string), 100) : 50;
+    params.push(maxLimit.toString());
+    query += ` LIMIT $${params.length}`;
+
+    const result = await pool.query(query, params);
+    return res.status(200).json({ logs: result.rows });
+  } catch (err) {
+    console.error("List audit logs error:", err);
     return res.status(500).json({ error: "Something went wrong" });
   }
 }

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { pool } from "../db";
+import { logAudit } from "../services/audit.service";
 
 export async function submitDonorVerification(req: Request, res: Response) {
   const donorId = (req as any).user.id;
@@ -82,6 +83,17 @@ export async function approveDonorVerification(req: Request, res: Response) {
         .json({ error: "Verification not found or already processed" });
     }
 
+    await logAudit({
+      actorUserId: adminId,
+      action: "DONOR_VERIFICATION_APPROVED",
+      targetType: "donor_verification",
+      targetId: id as string,
+      metadata: {
+        donorId: result.rows[0].donor_id,
+        bloodGroup: result.rows[0].claimed_blood_group,
+      },
+    });
+
     return res.status(200).json({ verification: result.rows[0] });
   } catch (err) {
     console.error("Approve donor verification error:", err);
@@ -108,6 +120,14 @@ export async function rejectDonorVerification(req: Request, res: Response) {
         .status(404)
         .json({ error: "Verification not found or already processed" });
     }
+
+    await logAudit({
+      actorUserId: adminId,
+      action: "DONOR_VERIFICATION_REJECTED",
+      targetType: "donor_verification",
+      targetId: id as string,
+      metadata: { donorId: result.rows[0].donor_id, reason: reason || null },
+    });
 
     return res.status(200).json({ verification: result.rows[0] });
   } catch (err) {
