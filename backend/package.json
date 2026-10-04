@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "ts-node-dev src/index.ts",
+    "seed": "ts-node src/seed.ts",
     "type-check": "tsc --noEmit",
     "test": "echo \"No tests specified yet\""
   },
@@ -17,16 +18,19 @@
   "type": "commonjs",
   "dependencies": {
     "argon2": "^0.45.1",
+    "cors": "^2.8.6",
     "dotenv": "^16.4.7",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.23.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.2.0",
     "@types/pg": "^8.23.1",
+    "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.4.5"
   }
