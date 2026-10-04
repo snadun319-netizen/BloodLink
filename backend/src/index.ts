@@ -31,6 +31,14 @@ app.use("/api/organizations", organizationRoutes);
 app.use("/api/donors", donorVerificationRoutes);
 app.use("/api/staff", staffRoutes);
 app.use("/api/admin", adminRoutes);
+app.get("/", (req, res) => {
+  res.json({
+    name: "BloodLink REST API Server",
+    status: "online",
+    healthCheck: "/api/health",
+    frontendDashboardUrl: "http://localhost:5173",
+  });
+});
 
 app.get("/api/health", async (req, res) => {
   try {
