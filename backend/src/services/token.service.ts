@@ -1,187 +1,80 @@
 import crypto from "crypto";
+import { PoolClient } from "pg";
 import { pool } from "../db";
-import {
-  signAccessToken,
-  signRefreshToken,
-  verifyRefreshToken,
-  TokenPayload,
-} from "./jwt.service";
+import { transaction, HttpError } from "../transaction";
+import { signAccessToken, signRefreshToken, verifyRefreshToken, TokenPayload } from "./jwt.service";
 
-const REFRESH_TOKEN_EXPIRY_DAYS = 7;
+export const hashToken = (token: string): string => crypto.createHash("sha256").update(token).digest("hex");
 
-/**
- * Hash a refresh token for secure storage using SHA-256.
- * Unlike passwords, refresh tokens are high-entropy random strings,
- * so SHA-256 is sufficient and much faster than argon2.
- */
-function hashToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
-}
-
-/**
- * Generate a unique family ID for refresh token rotation tracking.
- * All tokens in the same "family" descend from the same original login.
- */
-function generateFamilyId(): string {
-  return crypto.randomBytes(32).toString("hex");
-}
-
-/**
- * Issue a new access + refresh token pair and store the refresh token.
- * This is used on login and token refresh.
- */
-export async function issueTokenPair(
-  payload: TokenPayload,
-  familyId?: string
-): Promise<{
-  accessToken: string;
-  refreshToken: string;
-  familyId: string;
+export async function issueTokenPair(payload: TokenPayload, familyId?: string, client?: PoolClient): Promise<{
+  accessToken: string; refreshToken: string; familyId: string;
 }> {
-  const family = familyId || generateFamilyId();
-
-  const accessToken = signAccessToken(payload);
-  const refreshToken = signRefreshToken({ ...payload, familyId: family });
-
-  const tokenHash = hashToken(refreshToken);
-  const expiresAt = new Date(
-    Date.now() + REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000
+  if (!client) return transaction(tx => issueTokenPair(payload, familyId, tx));
+  const user = (await client.query("SELECT id, role, organization_id, status, token_version FROM users WHERE id = $1 FOR UPDATE", [payload.id])).rows[0];
+  if (!user || user.status !== "active") throw new HttpError(403, "Account is not active");
+  if (["hospital_staff", "bloodbank_staff"].includes(user.role)) {
+    const organization = (await client.query("SELECT type, verification_status FROM organizations WHERE id = $1", [user.organization_id])).rows[0];
+    if (!organization || organization.verification_status !== "approved" || organization.type !== (user.role === "hospital_staff" ? "hospital" : "bloodbank")) throw new HttpError(403, "Staff organization is not approved for this role");
+  }
+  const family = familyId || crypto.randomBytes(32).toString("hex");
+  const current: TokenPayload = { id: String(user.id), role: user.role, orgId: user.organization_id ? String(user.organization_id) : null, tokenVersion: user.token_version, sid: family };
+  const accessToken = signAccessToken(current);
+  const refreshToken = signRefreshToken({ ...current, familyId: family });
+  await client.query(
+    "INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at) VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')",
+    [user.id, hashToken(refreshToken), family]
   );
-
-  // Store refresh token hash in database
-  await pool.query(
-    `INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at)
-     VALUES ($1, $2, $3, $4)`,
-    [parseInt(payload.id), tokenHash, family, expiresAt]
-  );
-
   return { accessToken, refreshToken, familyId: family };
 }
 
-/**
- * Rotate a refresh token:
- * 1. Verify the old token
- * 2. Check it exists in DB and is not revoked
- * 3. Revoke the old token
- * 4. Issue a new token pair in the same family
- *
- * If a revoked token is reused, the ENTIRE family is revoked
- * (indicates potential token theft).
- */
-export async function rotateRefreshToken(oldRefreshToken: string): Promise<{
-  accessToken: string;
-  refreshToken: string;
-  user: TokenPayload;
-} | null> {
-  // 1. Verify JWT signature and expiry
+export async function rotateRefreshToken(token: string): Promise<{ accessToken: string; refreshToken: string; user: TokenPayload } | null> {
   let payload: TokenPayload & { familyId?: string };
-  try {
-    payload = verifyRefreshToken(oldRefreshToken) as TokenPayload & {
-      familyId?: string;
-    };
-  } catch {
-    return null;
-  }
-
-  const tokenHash = hashToken(oldRefreshToken);
-
-  // 2. Look up the token in DB
-  const result = await pool.query(
-    `SELECT id, user_id, family_id, is_revoked, expires_at
-     FROM refresh_tokens
-     WHERE token_hash = $1`,
-    [tokenHash]
-  );
-
-  if (result.rows.length === 0) {
-    return null;
-  }
-
-  const storedToken = result.rows[0];
-
-  // 3. If the token was already revoked → token theft detected!
-  //    Revoke the ENTIRE family to lock out the attacker.
-  if (storedToken.is_revoked) {
-    console.warn(
-      `🚨 SECURITY: Refresh token reuse detected for family ${storedToken.family_id}! Revoking entire family.`
+  try { payload = verifyRefreshToken(token); } catch { return null; }
+  return transaction(async client => {
+    // Serialize all session mutations on the user, consistently before token rows.
+    const user = (await client.query("SELECT id, role, organization_id, status, token_version FROM users WHERE id = $1 FOR UPDATE", [payload.id])).rows[0];
+    if (!user || user.status !== "active" || user.token_version !== payload.tokenVersion) return null;
+    if (["hospital_staff", "bloodbank_staff"].includes(user.role)) {
+      const organization = (await client.query("SELECT type, verification_status FROM organizations WHERE id = $1", [user.organization_id])).rows[0];
+      if (!organization || organization.verification_status !== "approved" || organization.type !== (user.role === "hospital_staff" ? "hospital" : "bloodbank")) {
+        await revokeAllUserTokens(user.id, client);
+        return null;
+      }
+    }
+    const stored = (await client.query(
+      "SELECT *, expires_at > NOW() AS unexpired FROM refresh_tokens WHERE token_hash = $1 AND user_id = $2 FOR UPDATE",
+      [hashToken(token), user.id]
+    )).rows[0];
+    if (!stored || stored.family_id !== payload.familyId) return null;
+    if (stored.is_revoked) {
+      await client.query("UPDATE refresh_tokens SET is_revoked = true WHERE family_id = $1 AND user_id = $2", [stored.family_id, user.id]);
+      return null;
+    }
+    if (!stored.unexpired) return null;
+    await client.query("UPDATE refresh_tokens SET is_revoked = true WHERE id = $1", [stored.id]);
+    const current = { id: String(user.id), role: user.role, orgId: user.organization_id ? String(user.organization_id) : null, tokenVersion: user.token_version, sid: stored.family_id };
+    const pair = await issueTokenPair(current, stored.family_id, client);
+    return { accessToken: pair.accessToken, refreshToken: pair.refreshToken, user: current };
+  });
+}
+export async function revokeAllUserTokens(userId: number, client?: PoolClient): Promise<void> {
+  if (!client) return transaction(tx => revokeAllUserTokens(userId, tx));
+  await client.query("UPDATE users SET token_version = token_version + 1, updated_at = NOW() WHERE id = $1", [userId]);
+  await client.query("UPDATE refresh_tokens SET is_revoked = true WHERE user_id = $1", [userId]);
+}
+export async function revokeRefreshToken(token: string): Promise<void> {
+  let payload: TokenPayload;
+  try { payload = verifyRefreshToken(token); } catch { return; }
+  await transaction(async client => {
+    await client.query("SELECT id FROM users WHERE id = $1 FOR UPDATE", [payload.id]);
+    // Logout ends the entire session, including access tokens and rotated descendants.
+    await client.query(
+      "UPDATE refresh_tokens SET is_revoked = true WHERE user_id = $1 AND family_id IN (SELECT family_id FROM refresh_tokens WHERE token_hash = $2 AND user_id = $1)",
+      [payload.id, hashToken(token)]
     );
-    await pool.query(
-      `UPDATE refresh_tokens SET is_revoked = true WHERE family_id = $1`,
-      [storedToken.family_id]
-    );
-    return null;
-  }
-
-  // 4. Check expiry
-  if (new Date(storedToken.expires_at) < new Date()) {
-    return null;
-  }
-
-  // 5. Revoke the old token
-  await pool.query(`UPDATE refresh_tokens SET is_revoked = true WHERE id = $1`, [
-    storedToken.id,
-  ]);
-
-  // 6. Verify user still exists and is active
-  const userResult = await pool.query(
-    `SELECT id, email, role, organization_id, status FROM users WHERE id = $1`,
-    [storedToken.user_id]
-  );
-
-  if (userResult.rows.length === 0) {
-    return null;
-  }
-
-  const user = userResult.rows[0];
-  if (user.status === "suspended") {
-    return null;
-  }
-
-  // 7. Issue new token pair in the same family
-  const newPayload: TokenPayload = {
-    id: user.id.toString(),
-    role: user.role,
-    orgId: user.organization_id ? user.organization_id.toString() : null,
-  };
-
-  const { accessToken, refreshToken } = await issueTokenPair(
-    newPayload,
-    storedToken.family_id
-  );
-
-  return {
-    accessToken,
-    refreshToken,
-    user: newPayload,
-  };
+  });
 }
-
-/**
- * Revoke all refresh tokens for a user (e.g., on logout, password change).
- */
-export async function revokeAllUserTokens(userId: number): Promise<void> {
-  await pool.query(
-    `UPDATE refresh_tokens SET is_revoked = true WHERE user_id = $1`,
-    [userId]
-  );
-}
-
-/**
- * Revoke a specific refresh token by its raw token string.
- */
-export async function revokeRefreshToken(refreshToken: string): Promise<void> {
-  const tokenHash = hashToken(refreshToken);
-  await pool.query(
-    `UPDATE refresh_tokens SET is_revoked = true WHERE token_hash = $1`,
-    [tokenHash]
-  );
-}
-
-/**
- * Cleanup expired and revoked tokens (can be run periodically).
- */
 export async function cleanupExpiredTokens(): Promise<void> {
-  await pool.query(
-    `DELETE FROM refresh_tokens WHERE expires_at < NOW() OR is_revoked = true`
-  );
+  // Retain revoked ancestors until the last descendant expires so reuse stays detectable.
+  await pool.query("DELETE FROM refresh_tokens r WHERE NOT EXISTS (SELECT 1 FROM refresh_tokens sibling WHERE sibling.family_id = r.family_id AND sibling.expires_at > NOW())");
 }
