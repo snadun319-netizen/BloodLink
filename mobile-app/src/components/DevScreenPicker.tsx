@@ -125,7 +125,7 @@ export const DevScreenPicker: React.FC<DevScreenPickerProps> = ({
 const styles = StyleSheet.create({
   floatingContainer: {
     position: 'absolute',
-    top: 50,
+    bottom: 24,
     right: 16,
     zIndex: 9999,
   },
