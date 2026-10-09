@@ -49,11 +49,11 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
 
   const handleContinue = () => {
     onContinue({
-      fullName: fullName || 'Dileepa Sandaruwan',
-      phone: phone || '77 123 4567',
+      fullName: fullName.trim(),
+      phone: phone.trim(),
       countryCode,
-      dob: dob || '1998/05/12',
-      nic: nic || '981340821V',
+      dob: dob.trim(),
+      nic: nic.trim(),
     });
   };
 
@@ -87,7 +87,7 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
               <Text style={styles.label}>Full Name</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g. Dileepa Sandaruwan"
+                placeholder="Enter your full name"
                 placeholderTextColor="#94A3B8"
                 value={fullName}
                 onChangeText={setFullName}
@@ -110,7 +110,7 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
 
                 <TextInput
                   style={[styles.input, styles.phoneInput]}
-                  placeholder="000 000 0000"
+                  placeholder="77 123 4567"
                   placeholderTextColor="#94A3B8"
                   keyboardType="phone-pad"
                   value={phone}
@@ -124,8 +124,8 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
               <Text style={styles.label}>Date of Birth</Text>
               <View style={styles.iconInputRow}>
                 <TextInput
-                  style={[styles.input, { flex: 1, borderWidth: 0, paddingHorizontal: 0 }]}
-                  placeholder="mm/dd/yyyy"
+                  style={styles.iconInputText}
+                  placeholder="YYYY/MM/DD"
                   placeholderTextColor="#94A3B8"
                   value={dob}
                   onChangeText={setDob}
@@ -264,6 +264,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  iconInputText: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
+    color: '#0F172A',
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    backgroundColor: 'transparent',
   },
   privacyCard: {
     backgroundColor: '#F0F4FF',
@@ -293,11 +303,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
     marginBottom: 14,
   },
   primaryButtonText: {
