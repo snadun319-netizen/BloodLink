@@ -7,26 +7,40 @@ interface IconProps {
 }
 
 export const ArrowLeftIcon: React.FC<IconProps> = ({ size = 20, color = '#1E293B' }) => {
+  const stroke = 2.2;
+  const headSize = size * 0.38;
   return (
-    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-      <View
-        style={{
-          width: size * 0.5,
-          height: size * 0.5,
-          borderLeftWidth: 2.4,
-          borderBottomWidth: 2.4,
-          borderColor: color,
-          transform: [{ rotate: '45deg' }],
-          marginLeft: size * 0.15,
-        }}
-      />
+    <View
+      style={{
+        width: size,
+        height: size,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}
+    >
+      {/* Arrow Shaft */}
       <View
         style={{
           position: 'absolute',
           width: size * 0.65,
-          height: 2.4,
+          height: stroke,
           backgroundColor: color,
-          borderRadius: 1,
+          borderRadius: stroke / 2,
+          left: size * 0.16,
+        }}
+      />
+      {/* Arrowhead */}
+      <View
+        style={{
+          position: 'absolute',
+          left: size * 0.16,
+          width: headSize,
+          height: headSize,
+          borderLeftWidth: stroke,
+          borderTopWidth: stroke,
+          borderColor: color,
+          borderTopLeftRadius: 1,
+          transform: [{ rotate: '-45deg' }],
         }}
       />
     </View>

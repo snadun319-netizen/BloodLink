@@ -32,8 +32,8 @@ export const ResetPasswordStep3Screen: React.FC<ResetPasswordStep3ScreenProps> =
   onResetComplete,
   onSignIn,
 }) => {
-  const [password, setPassword] = useState('BloodLink@2025');
-  const [confirmPassword, setConfirmPassword] = useState('BloodLink@2025');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -329,11 +329,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
     marginBottom: 14,
   },
   primaryButtonText: {

@@ -28,7 +28,7 @@ export const ResetPasswordStep1Screen: React.FC<ResetPasswordStep1ScreenProps> =
   onSendResetLink,
   onSignIn,
 }) => {
-  const [email, setEmail] = useState('you@email.com');
+  const [email, setEmail] = useState('');
 
   return (
     <SafeAreaView style={styles.container}>
@@ -165,11 +165,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
     marginBottom: 14,
   },
   primaryButtonText: {
