@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { Header } from '../components/Header';
 import { StepIndicator } from '../components/StepIndicator';
@@ -23,7 +25,7 @@ export const CreateAccountStep3Screen: React.FC<CreateAccountStep3ScreenProps> =
   onBack,
   onContinue,
   onSignIn,
-  phoneNumber = '+94 77 123 4567',
+  phoneNumber = '',
 }) => {
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [timerSeconds, setTimerSeconds] = useState(45);
@@ -75,62 +77,64 @@ export const CreateAccountStep3Screen: React.FC<CreateAccountStep3ScreenProps> =
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       <Header title="Create Account" onBack={onBack} />
 
-      <View style={styles.content}>
-        <Text style={styles.title}>Verify Your Number</Text>
-        <Text style={styles.subtitle}>
-          We've sent a 6-digit code to {phoneNumber}.
-        </Text>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Verify Your Number</Text>
+          <Text style={styles.subtitle}>
+            We've sent a 6-digit code to {phoneNumber || 'your phone number'}.
+          </Text>
 
-        <StepIndicator currentStep={3} totalSteps={4} />
+          <StepIndicator currentStep={3} totalSteps={4} />
 
-        {/* 6-box OTP input */}
-        <View style={styles.otpRow}>
-          {digits.map((digit, index) => {
-            const isActive = index === digits.findIndex((d) => d === '');
-            return (
-              <TextInput
-                key={index}
-                ref={(ref) => {
-                  inputRefs.current[index] = ref;
-                }}
-                style={[
-                  styles.otpBox,
-                  digit ? styles.otpBoxFilled : null,
-                  isActive ? styles.otpBoxActive : null,
-                ]}
-                keyboardType="number-pad"
-                maxLength={1}
-                value={digit}
-                onChangeText={(val) => handleTextChange(val, index)}
-                onKeyPress={(e) => handleKeyPress(e, index)}
-                textAlign="center"
-                autoFocus={index === 0}
-              />
-            );
-          })}
+          {/* 6-box OTP input */}
+          <View style={styles.otpRow}>
+            {digits.map((digit, index) => {
+              const isActive = index === digits.findIndex((d) => d === '');
+              return (
+                <TextInput
+                  key={index}
+                  ref={(ref) => {
+                    inputRefs.current[index] = ref;
+                  }}
+                  style={[
+                    styles.otpBox,
+                    digit ? styles.otpBoxFilled : null,
+                    isActive ? styles.otpBoxActive : null,
+                  ]}
+                  keyboardType="number-pad"
+                  maxLength={1}
+                  value={digit}
+                  onChangeText={(val) => handleTextChange(val, index)}
+                  onKeyPress={(e) => handleKeyPress(e, index)}
+                  textAlign="center"
+                  autoFocus={index === 0}
+                />
+              );
+            })}
+          </View>
+
+          {/* Resend OTP Row */}
+          <View style={styles.resendRow}>
+            <Text style={styles.resendPrompt}>Didn't receive code?</Text>
+            <TouchableOpacity
+              disabled={timerSeconds > 0}
+              onPress={() => setTimerSeconds(45)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.resendText, timerSeconds === 0 && { color: colors.primary }]}>
+                Resend OTP {timerSeconds > 0 ? `(${formattedTimer})` : ''}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-
-        {/* Resend OTP Row */}
-        <View style={styles.resendRow}>
-          <Text style={styles.resendPrompt}>Didn't receive code?</Text>
-          <TouchableOpacity
-            disabled={timerSeconds > 0}
-            onPress={() => setTimerSeconds(45)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.resendText, timerSeconds === 0 && { color: colors.primary }]}>
-              Resend OTP {timerSeconds > 0 ? `(${formattedTimer})` : ''}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </TouchableWithoutFeedback>
 
       {/* Footer Button */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.primaryButton}
           activeOpacity={0.85}
-          onPress={() => onContinue(otpValue || '123456')}
+          onPress={() => onContinue(otpValue)}
         >
           <Text style={styles.primaryButtonText}>Continue</Text>
         </TouchableOpacity>
@@ -222,11 +226,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
     marginBottom: 14,
   },
   primaryButtonText: {
