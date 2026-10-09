@@ -10,6 +10,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { Header } from '../components/Header';
 import { MailIcon } from '../components/Icons';
@@ -28,9 +30,9 @@ export const ResetPasswordStep2Screen: React.FC<ResetPasswordStep2ScreenProps> =
   onBack,
   onVerify,
   onChangeEmail,
-  email = 'you@email.com',
+  email = '',
 }) => {
-  const [digits, setDigits] = useState<string[]>(['4', '8', '2', '', '', '']);
+  const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [expirySeconds, setExpirySeconds] = useState(899); // 14:59
   const [resendSeconds, setResendSeconds] = useState(45);
   const inputRefs = useRef<Array<TextInput | null>>([]);
@@ -91,6 +93,8 @@ export const ResetPasswordStep2Screen: React.FC<ResetPasswordStep2ScreenProps> =
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
         >
           {/* Center Mail Icon */}
           <View style={styles.iconCenter}>
@@ -283,11 +287,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
     marginBottom: 14,
   },
   primaryButtonText: {
