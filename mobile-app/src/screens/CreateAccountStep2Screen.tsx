@@ -7,10 +7,14 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import { Header } from '../components/Header';
 import { StepIndicator } from '../components/StepIndicator';
 import { colors } from '../theme/colors';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_SIZE = Math.floor((SCREEN_WIDTH - 48 - 30) / 4);
 
 interface CreateAccountStep2ScreenProps {
   onBack: () => void;
@@ -25,7 +29,7 @@ export const CreateAccountStep2Screen: React.FC<CreateAccountStep2ScreenProps> =
   onBack,
   onContinue,
   onSignIn,
-  initialBloodGroup = 'A-',
+  initialBloodGroup = '',
 }) => {
   const [selectedGroup, setSelectedGroup] = useState<string>(initialBloodGroup);
 
@@ -60,14 +64,16 @@ export const CreateAccountStep2Screen: React.FC<CreateAccountStep2ScreenProps> =
                 activeOpacity={0.75}
                 onPress={() => setSelectedGroup(group)}
               >
-                <Text
-                  style={[
-                    styles.bloodGroupText,
-                    isSelected ? styles.selectedBloodGroupText : styles.unselectedBloodGroupText,
-                  ]}
-                >
-                  {group}
-                </Text>
+                <View style={styles.bloodCardInner}>
+                  <Text
+                    style={[
+                      styles.bloodGroupText,
+                      isSelected ? styles.selectedBloodGroupText : styles.unselectedBloodGroupText,
+                    ]}
+                  >
+                    {group}
+                  </Text>
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -142,17 +148,22 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    gap: 10,
     marginVertical: 18,
-    rowGap: 14,
   },
   bloodCard: {
-    width: '22.5%',
-    aspectRatio: 1,
+    width: CARD_SIZE,
+    height: CARD_SIZE,
     borderRadius: 16,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  bloodCardInner: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
   },
   unselectedBloodCard: {
     backgroundColor: '#FFFFFF',
@@ -165,6 +176,7 @@ const styles = StyleSheet.create({
   bloodGroupText: {
     fontSize: 18,
     fontWeight: '800',
+    textAlign: 'center',
   },
   unselectedBloodGroupText: {
     color: '#1E293B',
@@ -223,11 +235,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
     marginBottom: 14,
   },
   primaryButtonText: {
