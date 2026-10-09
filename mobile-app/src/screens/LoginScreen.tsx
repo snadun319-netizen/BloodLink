@@ -34,7 +34,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onRegister,
 }) => {
   const [method, setMethod] = useState<'phone' | 'email'>('phone');
-  const [phone, setPhone] = useState('+94 77 123 4567');
+  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -386,11 +386,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
     marginBottom: 14,
   },
   primaryButtonText: {
