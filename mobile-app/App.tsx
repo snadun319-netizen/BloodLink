@@ -21,17 +21,17 @@ import { ScreenName, RegistrationData } from './src/types/navigation';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('Splash');
-  const [resetEmail, setResetEmail] = useState('you@email.com');
+  const [resetEmail, setResetEmail] = useState('');
 
   const [registrationData, setRegistrationData] = useState<RegistrationData>({
-    fullName: 'Dileepa Sandaruwan',
-    phone: '77 123 4567',
+    fullName: '',
+    phone: '',
     countryCode: '+94',
-    dob: '1998/05/12',
-    nic: '981340821V',
-    bloodGroup: 'A-',
-    otp: '482159',
-    documentName: 'blood_report_verification.pdf',
+    dob: '',
+    nic: '',
+    bloodGroup: '',
+    otp: '',
+    documentName: '',
   });
 
   const renderScreen = () => {
