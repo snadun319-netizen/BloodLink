@@ -32,6 +32,8 @@ CREATE TABLE users (
   role VARCHAR(20) NOT NULL CHECK (role IN ('donor', 'hospital_staff', 'bloodbank_staff', 'admin')),
   organization_id INTEGER REFERENCES organizations(id) ON DELETE SET NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended')),
+  failed_login_attempts INTEGER NOT NULL DEFAULT 0,
+  locked_until TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -49,6 +51,7 @@ CREATE TABLE donor_profiles (
   full_name VARCHAR(255),
   nic VARCHAR(20),
   phone VARCHAR(20),
+  date_of_birth DATE,
   blood_group VARCHAR(5) CHECK (blood_group IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
   is_available BOOLEAN NOT NULL DEFAULT true,
   latitude NUMERIC(10, 7),
@@ -142,3 +145,57 @@ CREATE TABLE audit_logs (
   ip_address VARCHAR(45),
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- -----------------------------------------------------------------------------
+-- 10. Password Reset Tokens (OTP-based Password Recovery)
+-- -----------------------------------------------------------------------------
+CREATE TABLE password_reset_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  otp_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  max_attempts INTEGER NOT NULL DEFAULT 5,
+  expires_at TIMESTAMP NOT NULL,
+  used_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Index for efficient lookup and cleanup
+CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens(user_id);
+CREATE INDEX idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at);
+
+-- -----------------------------------------------------------------------------
+-- 11. Refresh Tokens (Token Rotation & Blacklisting)
+-- -----------------------------------------------------------------------------
+CREATE TABLE refresh_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  family_id VARCHAR(64) NOT NULL,
+  is_revoked BOOLEAN NOT NULL DEFAULT false,
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Indexes for efficient lookup and cleanup
+CREATE INDEX idx_refresh_tokens_user_id ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_family_id ON refresh_tokens(family_id);
+CREATE INDEX idx_refresh_tokens_token_hash ON refresh_tokens(token_hash);
+
+-- -----------------------------------------------------------------------------
+-- 12. Registration OTPs (Phone/Email verification during signup)
+-- -----------------------------------------------------------------------------
+CREATE TABLE registration_otps (
+  id SERIAL PRIMARY KEY,
+  identifier VARCHAR(255) NOT NULL,
+  identifier_type VARCHAR(10) NOT NULL CHECK (identifier_type IN ('email', 'phone')),
+  otp_hash TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  max_attempts INTEGER NOT NULL DEFAULT 5,
+  expires_at TIMESTAMP NOT NULL,
+  verified_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_registration_otps_identifier ON registration_otps(identifier);
+CREATE INDEX idx_registration_otps_expires_at ON registration_otps(expires_at);
