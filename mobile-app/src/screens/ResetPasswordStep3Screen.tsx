@@ -20,22 +20,52 @@ import {
 } from '../components/Icons';
 import { PasswordRecoverySteps } from '../components/PasswordRecoverySteps';
 import { colors } from '../theme/colors';
+import { resetPassword as apiResetPassword } from '../services/authService';
 
 interface ResetPasswordStep3ScreenProps {
   onBack: () => void;
   onResetComplete: () => void;
   onSignIn: () => void;
+  email?: string;
+  resetToken?: string;
 }
 
 export const ResetPasswordStep3Screen: React.FC<ResetPasswordStep3ScreenProps> = ({
   onBack,
   onResetComplete,
   onSignIn,
+  email = '',
+  resetToken,
 }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    if (!password || password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMessage('Passwords do not match');
+      return;
+    }
+
+    if (!resetToken) { setErrorMessage("Verify your reset code first."); return; }
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      await apiResetPassword(email, password, confirmPassword, resetToken);
+      onResetComplete();
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to reset password. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Requirements checks
   const hasMinLength = password.length >= 8;
@@ -175,6 +205,14 @@ export const ResetPasswordStep3Screen: React.FC<ResetPasswordStep3ScreenProps> =
             </View>
           </View>
 
+          {errorMessage && (
+            <View style={{ backgroundColor: '#FFF1F2', borderRadius: 8, padding: 10, marginVertical: 12 }}>
+              <Text style={{ color: '#E11D48', fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
+                {errorMessage}
+              </Text>
+            </View>
+          )}
+
           {/* Password Recovery Steps Indicator (Step 3 active) */}
           <PasswordRecoverySteps currentStep={3} />
         </ScrollView>
@@ -183,11 +221,14 @@ export const ResetPasswordStep3Screen: React.FC<ResetPasswordStep3ScreenProps> =
       {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, isSubmitting && { opacity: 0.7 }]}
           activeOpacity={0.85}
-          onPress={onResetComplete}
+          onPress={handleSubmit}
+          disabled={isSubmitting}
         >
-          <Text style={styles.primaryButtonText}>Reset Password & Sign In</Text>
+          <Text style={styles.primaryButtonText}>
+            {isSubmitting ? 'Resetting...' : 'Reset Password & Sign In'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity

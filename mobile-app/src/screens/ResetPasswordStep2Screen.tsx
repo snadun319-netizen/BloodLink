@@ -18,10 +18,11 @@ import { MailIcon } from '../components/Icons';
 import { PasswordRecoverySteps } from '../components/PasswordRecoverySteps';
 import { SecurityBadge } from '../components/SecurityBadge';
 import { colors } from '../theme/colors';
+import { verifyPasswordResetOtp, requestPasswordReset } from '../services/authService';
 
 interface ResetPasswordStep2ScreenProps {
   onBack: () => void;
-  onVerify: (otp: string) => void;
+  onVerify: (otp: string, resetToken?: string) => void;
   onChangeEmail: () => void;
   email?: string;
 }
@@ -35,7 +36,46 @@ export const ResetPasswordStep2Screen: React.FC<ResetPasswordStep2ScreenProps> =
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [expirySeconds, setExpirySeconds] = useState(899); // 14:59
   const [resendSeconds, setResendSeconds] = useState(45);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inputRefs = useRef<Array<TextInput | null>>([]);
+
+
+  const handleResend = async () => {
+    if (!email) return;
+    setIsResending(true);
+    setErrorMessage(null);
+    try {
+      await requestPasswordReset(email);
+      setResendSeconds(45);
+      setExpirySeconds(899);
+      setDigits(['', '', '', '', '', '']);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to resend code');
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const handleVerifySubmit = async () => {
+    const otpValue = digits.join('');
+    if (otpValue.length !== 6) {
+      setErrorMessage('Please enter all 6 digits of the OTP code.');
+      return;
+    }
+
+    setIsVerifying(true);
+    setErrorMessage(null);
+    try {
+      const res = await verifyPasswordResetOtp(email, otpValue);
+      onVerify(otpValue, res.resetToken);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Invalid or expired OTP. Please try again.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -110,6 +150,18 @@ export const ResetPasswordStep2Screen: React.FC<ResetPasswordStep2ScreenProps> =
             <Text style={styles.timerHighlight}>{formatTime(expirySeconds)}</Text>.
           </Text>
 
+          {/* Dev OTP Helper Banner */}
+
+
+          {/* Error Message */}
+          {errorMessage && (
+            <View style={{ backgroundColor: '#FFF1F2', borderRadius: 8, padding: 10, marginBottom: 12 }}>
+              <Text style={{ color: '#E11D48', fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
+                {errorMessage}
+              </Text>
+            </View>
+          )}
+
           {/* Code Input */}
           <View style={styles.codeContainer}>
             <Text style={styles.codeLabel}>Verification Code</Text>
@@ -126,6 +178,7 @@ export const ResetPasswordStep2Screen: React.FC<ResetPasswordStep2ScreenProps> =
                       styles.codeBox,
                       digit ? styles.codeBoxFilled : null,
                       isActive ? styles.codeBoxActive : null,
+                      errorMessage ? { borderColor: '#E11D48' } : null,
                     ]}
                     keyboardType="number-pad"
                     maxLength={1}
@@ -133,6 +186,7 @@ export const ResetPasswordStep2Screen: React.FC<ResetPasswordStep2ScreenProps> =
                     onChangeText={(val) => handleTextChange(val, idx)}
                     onKeyPress={(e) => handleKeyPress(e, idx)}
                     textAlign="center"
+                    editable={!isVerifying}
                   />
                 );
               })}
@@ -142,12 +196,12 @@ export const ResetPasswordStep2Screen: React.FC<ResetPasswordStep2ScreenProps> =
             <View style={styles.resendRow}>
               <Text style={styles.resendPrompt}>Didn't receive code?</Text>
               <TouchableOpacity
-                disabled={resendSeconds > 0}
-                onPress={() => setResendSeconds(45)}
+                disabled={resendSeconds > 0 || isResending}
+                onPress={handleResend}
                 activeOpacity={0.7}
               >
-                <Text style={styles.resendText}>
-                  Resend OTP {resendSeconds > 0 ? `(00:${resendSeconds < 10 ? '0' : ''}${resendSeconds})` : ''}
+                <Text style={[styles.resendText, resendSeconds === 0 && { color: colors.primary }]}>
+                  {isResending ? 'Sending...' : `Resend OTP ${resendSeconds > 0 ? `(00:${resendSeconds < 10 ? '0' : ''}${resendSeconds})` : ''}`}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -164,11 +218,14 @@ export const ResetPasswordStep2Screen: React.FC<ResetPasswordStep2ScreenProps> =
       {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, isVerifying && { opacity: 0.7 }]}
           activeOpacity={0.85}
-          onPress={() => onVerify(digits.join('') || '482159')}
+          onPress={handleVerifySubmit}
+          disabled={isVerifying}
         >
-          <Text style={styles.primaryButtonText}>Verify & Proceed</Text>
+          <Text style={styles.primaryButtonText}>
+            {isVerifying ? 'Verifying...' : 'Verify & Proceed'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity

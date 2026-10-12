@@ -21,5 +21,7 @@ export interface RegistrationData {
   nic: string;
   bloodGroup: string;
   otp: string;
+  email?: string;
+  registrationToken?: string;
   documentName?: string;
 }

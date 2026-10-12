@@ -19,6 +19,7 @@ import {
   validateOtpInput,
   validateResetPasswordInput,
   validateSendOtpInput,
+  validateTokenInput,
 } from "../middleware/validation.middleware";
 import {
   loginLimiter,
@@ -37,8 +38,8 @@ router.post("/register", registerLimiter, validateRegistrationInput, register);
 router.post("/login", loginLimiter, validateLoginInput, login);
 
 // ─── Token Management ───────────────────────────────────────────────────────
-router.post("/refresh", refresh);
-router.post("/logout", logout);
+router.post("/refresh", validateTokenInput, refresh);
+router.post("/logout", validateTokenInput, logout);
 
 // ─── Authenticated Profile ──────────────────────────────────────────────────
 router.get("/me", authenticate, getMe);
@@ -50,6 +51,6 @@ router.post("/verify-otp", otpVerifyLimiter, validateOtpInput, verifyOtp);
 // ─── Forgot Password Flow ───────────────────────────────────────────────────
 router.post("/forgot-password", forgotPasswordLimiter, validateForgotPasswordInput, forgotPassword);
 router.post("/verify-reset-otp", otpVerifyLimiter, validateOtpInput, verifyResetOtp);
-router.post("/reset-password", validateResetPasswordInput, resetPassword);
+router.post("/reset-password", otpVerifyLimiter, validateResetPasswordInput, resetPassword);
 
 export default router;

@@ -1,9 +1,11 @@
-import { Request, Response } from "express";
+import { AuthRequest } from "../middleware/auth.middleware";
+import { Response, NextFunction } from "express";
 import { pool } from "../db";
 import { logAudit } from "../services/audit.service";
+import { transaction } from "../transaction";
 
-export async function submitDonorVerification(req: Request, res: Response) {
-  const donorId = (req as any).user.id;
+export async function submitDonorVerification(req: AuthRequest, res: Response, next: NextFunction) {
+  const donorId = req.user!.id;
   const { documentUrl, claimedBloodGroup } = req.body;
 
   if (!documentUrl || !claimedBloodGroup) {
@@ -38,14 +40,14 @@ export async function submitDonorVerification(req: Request, res: Response) {
 
     return res.status(201).json({ verification: result.rows[0] });
   } catch (err) {
-    console.error("Submit donor verification error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
 export async function listPendingDonorVerifications(
-  req: Request,
+  req: AuthRequest,
   res: Response,
+  next: NextFunction,
 ) {
   try {
     const result = await pool.query(
@@ -59,23 +61,29 @@ export async function listPendingDonorVerifications(
 
     return res.status(200).json({ verifications: result.rows });
   } catch (err) {
-    console.error("List pending donor verifications error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function approveDonorVerification(req: Request, res: Response) {
+export async function approveDonorVerification(req: AuthRequest, res: Response, next: NextFunction) {
   const { id } = req.params;
-  const adminId = (req as any).user.id;
+  const adminId = req.user!.id;
 
   try {
-    const result = await pool.query(
+    const result = await transaction(async client => {
+      const updated = await client.query(
       `UPDATE donor_verifications
        SET status = 'approved', reviewed_by = $1, reviewed_at = NOW()
        WHERE id = $2 AND status = 'pending'
        RETURNING id, donor_id, claimed_blood_group, status`,
       [adminId, id],
-    );
+      );
+      if (updated.rows.length) await client.query(
+        "UPDATE donor_profiles SET blood_group = $1, blood_group_verified = true, updated_at = NOW() WHERE user_id = $2",
+        [updated.rows[0].claimed_blood_group, updated.rows[0].donor_id]
+      );
+      return updated;
+    });
 
     if (result.rows.length === 0) {
       return res
@@ -96,15 +104,14 @@ export async function approveDonorVerification(req: Request, res: Response) {
 
     return res.status(200).json({ verification: result.rows[0] });
   } catch (err) {
-    console.error("Approve donor verification error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function rejectDonorVerification(req: Request, res: Response) {
+export async function rejectDonorVerification(req: AuthRequest, res: Response, next: NextFunction) {
   const { id } = req.params;
   const { reason } = req.body;
-  const adminId = (req as any).user.id;
+  const adminId = req.user!.id;
 
   try {
     const result = await pool.query(
@@ -131,7 +138,6 @@ export async function rejectDonorVerification(req: Request, res: Response) {
 
     return res.status(200).json({ verification: result.rows[0] });
   } catch (err) {
-    console.error("Reject donor verification error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }

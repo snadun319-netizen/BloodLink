@@ -20,6 +20,8 @@ import {
 import { SecurityBadge } from '../components/SecurityBadge';
 import { colors } from '../theme/colors';
 
+import { useAuth } from '../context/AuthContext';
+
 interface LoginScreenProps {
   onBack: () => void;
   onSignIn: (method: 'phone' | 'email', credentials: any) => void;
@@ -33,14 +35,47 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onForgotPassword,
   onRegister,
 }) => {
+  const { signInWithEmail, signInWithPhone } = useAuth();
   const [method, setMethod] = useState<'phone' | 'email'>('phone');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleSubmit = () => {
-    onSignIn(method, { phone, email, password });
+  const handleSubmit = async () => {
+    setErrorMessage(null);
+    if (!password) {
+      setErrorMessage('Please enter your password');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      if (method === 'email') {
+        const cleanEmail = email.trim();
+        if (!cleanEmail) {
+          setErrorMessage('Please enter your email address');
+          setIsLoading(false);
+          return;
+        }
+        await signInWithEmail(cleanEmail, password);
+      } else {
+        const cleanPhone = phone.trim();
+        if (!cleanPhone) {
+          setErrorMessage('Please enter your phone number');
+          setIsLoading(false);
+          return;
+        }
+        await signInWithPhone(cleanPhone, password);
+      }
+      onSignIn(method, { phone, email, password });
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Invalid credentials. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -183,6 +218,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             <Text style={styles.biometricText}>Sign in with Face ID / Fingerprint</Text>
           </TouchableOpacity>
 
+          {/* Error Message */}
+          {errorMessage && (
+            <View style={{ backgroundColor: '#FFF1F2', borderRadius: 10, padding: 12, marginVertical: 10 }}>
+              <Text style={{ color: '#E11D48', fontSize: 13, fontWeight: '600', textAlign: 'center' }}>
+                {errorMessage}
+              </Text>
+            </View>
+          )}
+
           {/* Security Guarantee Badge */}
           <SecurityBadge />
         </ScrollView>
@@ -191,11 +235,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, isLoading && { opacity: 0.7 }]}
           activeOpacity={0.85}
           onPress={handleSubmit}
+          disabled={isLoading}
         >
-          <Text style={styles.primaryButtonText}>Sign In</Text>
+          <Text style={styles.primaryButtonText}>
+            {isLoading ? 'Signing In...' : 'Sign In'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
