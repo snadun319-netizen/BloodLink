@@ -39,3 +39,7 @@ coverage/
 uploads/
 *.pem
 *.key
+
+# Local dependency audit cache
+.npm-cache/
+.qa-private/
