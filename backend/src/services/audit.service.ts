@@ -24,6 +24,6 @@ export async function logAudit(params: AuditLogParams) {
       ],
     );
   } catch (err) {
-    console.error("Audit log error:", err);
+    console.error("Audit log could not be persisted");
   }
 }
