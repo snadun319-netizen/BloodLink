@@ -15,12 +15,13 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { ResetPasswordStep1Screen } from './src/screens/ResetPasswordStep1Screen';
 import { ResetPasswordStep2Screen } from './src/screens/ResetPasswordStep2Screen';
 import { ResetPasswordStep3Screen } from './src/screens/ResetPasswordStep3Screen';
+import { HomeScreen } from './src/screens/HomeScreen';
 import { DevScreenPicker } from './src/components/DevScreenPicker';
 
 import { ScreenName, RegistrationData } from './src/types/navigation';
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<ScreenName>('Splash');
+  const [currentScreen, setCurrentScreen] = useState<ScreenName>('Home');
   const [resetEmail, setResetEmail] = useState('');
 
   const [registrationData, setRegistrationData] = useState<RegistrationData>({
@@ -114,7 +115,7 @@ export default function App() {
       case 'RegisteredSuccess':
         return (
           <RegisteredSuccessScreen
-            onGoToDashboard={() => setCurrentScreen('Welcome')}
+            onGoToDashboard={() => setCurrentScreen('Home')}
             bloodGroup={registrationData.bloodGroup}
           />
         );
@@ -124,11 +125,17 @@ export default function App() {
           <LoginScreen
             onBack={() => setCurrentScreen('Welcome')}
             onSignIn={(_method, _creds) => {
-              // Navigate to dashboard/welcome
-              setCurrentScreen('RegisteredSuccess');
+              setCurrentScreen('Home');
             }}
             onForgotPassword={() => setCurrentScreen('ResetPasswordStep1')}
             onRegister={() => setCurrentScreen('Onboarding')}
+          />
+        );
+
+      case 'Home':
+        return (
+          <HomeScreen
+            onLogout={() => setCurrentScreen('Login')}
           />
         );
 
