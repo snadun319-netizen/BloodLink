@@ -16,8 +16,9 @@ import { ResetPasswordStep1Screen } from './src/screens/ResetPasswordStep1Screen
 import { ResetPasswordStep2Screen } from './src/screens/ResetPasswordStep2Screen';
 import { ResetPasswordStep3Screen } from './src/screens/ResetPasswordStep3Screen';
 import { DevScreenPicker } from './src/components/DevScreenPicker';
-
 import { ScreenName, RegistrationData } from './src/types/navigation';
+import ProfileFlow from './src/profile/ProfileFlow';
+
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('Splash');
@@ -162,6 +163,9 @@ export default function App() {
             onSignIn={() => setCurrentScreen('Login')}
           />
         );
+
+      case 'Profile':
+        return <ProfileFlow onSignOut={() => setCurrentScreen('Welcome')} />;
 
       default:
         return (

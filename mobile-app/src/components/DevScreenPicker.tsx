@@ -32,6 +32,8 @@ const SCREENS: { id: ScreenName; label: string; category: string }[] = [
   { id: 'ResetPasswordStep1', label: '10. Reset Password: Step 1 (Email)', category: 'Reset Password Flow' },
   { id: 'ResetPasswordStep2', label: '11. Reset Password: Step 2 (OTP)', category: 'Reset Password Flow' },
   { id: 'ResetPasswordStep3', label: '12. Reset Password: Step 3 (New Password)', category: 'Reset Password Flow' },
+
+  { id: 'Profile', label: '13. Donor Profile (Profile Management)', category: 'Donor Profile' },
 ];
 
 export const DevScreenPicker: React.FC<DevScreenPickerProps> = ({
