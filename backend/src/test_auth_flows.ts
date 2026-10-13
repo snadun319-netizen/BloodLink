@@ -1,0 +1,317 @@
+import assert from "node:assert/strict";
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
+import http from "node:http";
+import { Pool } from "pg";
+import dotenv from "dotenv";
+import nodemailer from "nodemailer";
+
+dotenv.config();
+const configured = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+if (!configured) throw new Error("Set TEST_DATABASE_URL to a PostgreSQL account with CREATEDB permission");
+const url = new URL(configured);
+if (!process.env.TEST_DATABASE_URL && !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) throw new Error("Remote tests require explicit TEST_DATABASE_URL");
+const testName = "bloodlink_test_" + crypto.randomBytes(8).toString("hex");
+const names = [testName, testName + "_fresh"];
+const created: string[] = [];
+const admin = new Pool({ connectionString: configured, connectionTimeoutMillis: 5000 });
+let pool: Pool | undefined, fresh: Pool | undefined, server: http.Server | undefined;
+let passed = 0, failEmail = false;
+const emails: { to: string; text: string }[] = [];
+function check(condition: unknown, name: string) { assert.ok(condition, name); passed++; console.log("PASS: " + name); }
+// Only email transport is replaced. HTTP, database, crypto, and middleware run unchanged.
+(nodemailer as any).createTransport = () => ({
+  sendMail: async (message: { to: string; text: string }) => {
+    if (failEmail) throw new Error("Simulated delivery outage");
+    emails.push(message); return { message: JSON.stringify(message) };
+  },
+});
+async function main() {
+  for (const name of names) {
+    if (!/^bloodlink_test_[a-f0-9]{16}(?:_fresh)?$/.test(name)) throw new Error("Unsafe database name");
+    await admin.query('CREATE DATABASE "' + name + '"'); created.push(name);
+  }
+  url.pathname = "/" + testName;
+  process.env.DATABASE_URL = url.toString();
+  process.env.NODE_ENV = "test"; process.env.EMAIL_TRANSPORT = "console";
+  process.env.JWT_ACCESS_SECRET = crypto.randomBytes(48).toString("hex");
+  process.env.JWT_REFRESH_SECRET = crypto.randomBytes(48).toString("hex");
+  delete process.env.TRUST_PROXY; delete process.env.SMTP_HOST;
+  pool = (await import("./db")).pool;
+  const db = pool;
+  const { runMigrations } = await import("./migrate");
+  const schema = fs.readFileSync(path.resolve(__dirname, "../../database/schema.sql"), "utf8");
+  await db.query(schema.split("-- Baseline hardening")[0].replaceAll("TIMESTAMPTZ", "TIMESTAMP"));
+  await db.query("INSERT INTO registration_otps (identifier, identifier_type, otp_hash, expires_at, verified_at) VALUES ('legacy@example.com', 'email', 'legacy', NOW() + INTERVAL '1 hour', NOW()), ('legacy@example.com', 'email', 'legacy', NOW() + INTERVAL '1 hour', NULL)");
+  const legacyUser = (await db.query("INSERT INTO users (email, password_hash, role) VALUES ('legacy@example.com', 'preserved-password-hash', 'donor') RETURNING id")).rows[0];
+  await db.query("INSERT INTO password_reset_tokens (user_id, otp_hash, expires_at) VALUES ($1, 'legacy', NOW() + INTERVAL '1 hour')", [legacyUser.id]);
+  await db.query("INSERT INTO refresh_tokens (user_id, token_hash, family_id, expires_at) VALUES ($1, 'legacy-token', 'legacy-family', NOW() + INTERVAL '1 hour')", [legacyUser.id]);
+  await runMigrations();
+  check((await db.query("SELECT id FROM registration_otps")).rows.length === 0, "Upgrade clears duplicate insecure legacy OTP challenges");
+  check((await db.query("SELECT used_at FROM password_reset_tokens WHERE user_id = $1", [legacyUser.id])).rows[0].used_at, "Upgrade invalidates old numeric reset grants");
+  check((await db.query("SELECT is_revoked FROM refresh_tokens WHERE user_id = $1", [legacyUser.id])).rows[0].is_revoked, "Upgrade revokes old sessions");
+  check((await db.query("SELECT password_hash FROM users WHERE id = $1", [legacyUser.id])).rows[0].password_hash === "preserved-password-hash", "Upgrade preserves existing users and password hashes");
+  check((await db.query("SELECT COUNT(*) FROM schema_migrations")).rows[0].count === "2", "Legacy upgrade records both migrations");
+  check((await db.query("SELECT data_type FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'locked_until'")).rows[0].data_type === "timestamp with time zone", "Legacy timestamps migrate to timezone-aware values");
+  await runMigrations();
+  check((await db.query("SELECT COUNT(*) FROM schema_migrations")).rows[0].count === "2", "Migration runner is repeatable");
+  await assert.rejects(() => runMigrations(true)); passed++;
+  url.pathname = "/" + names[1];
+  fresh = new Pool({ connectionString: url.toString() }); await fresh.query(schema);
+  check((await fresh.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")).rows.some(r => r.column_name === "token_version"), "Fresh schema includes security hardening");
+  const { hashPassword, verifyPassword } = await import("./services/password.service");
+  const hash = await hashPassword("Password123!");
+  check(hash.startsWith("$argon2id$") && await verifyPassword(hash, "Password123!") && !await verifyPassword(hash, "bad"), "Argon2id password verification works");
+  const { issueTokenPair, rotateRefreshToken, cleanupExpiredTokens } = await import("./services/token.service");
+  const { signAccessToken, verifyAccessToken, verifyRefreshToken } = await import("./services/jwt.service");
+  const { createRegistrationOtp, verifyRegistrationOtp, createPasswordResetOtp, verifyPasswordResetOtp } = await import("./services/otp.service");
+  const { createApp } = await import("./app");
+  const { processPasswordResetJobs } = await import("./services/passwordResetDelivery.service");
+  const limiters = await import("./middleware/rateLimiter.middleware");
+  function resetLimits() { for (const limiter of Object.values(limiters)) (limiter as any).resetKey("127.0.0.1"); }
+  server = http.createServer(createApp());
+  await new Promise<void>(resolve => server!.listen(0, "127.0.0.1", resolve));
+  const base = "http://127.0.0.1:" + (server.address() as any).port;
+  async function api(endpoint: string, body?: unknown, token?: string, method = body === undefined ? "GET" : "POST") {
+    const response = await fetch(base + endpoint, {
+      method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+    return { status: response.status, data: await response.json() as any, headers: response.headers };
+  }
+  const post = (endpoint: string, body: unknown) => api("/api/auth" + endpoint, body);
+  const me = (token: string) => api("/api/auth/me", undefined, token);
+  function otpFor(email: string) {
+    const message = emails.filter(message => message.to === email).at(-1);
+    assert.ok(message, "Email delivered"); const otp = /code is: (\d{6})/.exec(message.text)?.[1];
+    assert.ok(otp, "OTP present in email"); return otp;
+  }
+  async function proof(email: string) {
+    resetLimits(); const send = await post("/send-otp", { identifier: email, type: "email" });
+    check(send.status === 200 && !("devOtp" in send.data), "Registration OTP is delivered without API disclosure");
+    const verification = await post("/verify-otp", { identifier: email, type: "email", otp: otpFor(email) });
+    check(verification.status === 200 && /^[a-f0-9]{64}$/.test(verification.data.registrationToken), "Email OTP issues random registration proof");
+    return verification.data.registrationToken as string;
+  }
+  async function allowResend(id: number) {
+    await db.query("UPDATE password_reset_tokens SET created_at = NOW() - INTERVAL '1 minute' WHERE user_id = $1", [id]);
+    await db.query("UPDATE password_reset_email_jobs SET created_at = NOW() - INTERVAL '1 minute' WHERE user_id = $1", [id]);
+  }
+  async function resetProof(email: string, id: number) {
+    resetLimits(); await allowResend(id);
+    check((await post("/forgot-password", { email })).status === 200, "Reset request succeeds");
+    await processPasswordResetJobs();
+    const verification = await post("/verify-reset-otp", { email, otp: otpFor(email) });
+    check(verification.status === 200 && /^[a-f0-9]{64}$/.test(verification.data.resetToken), "Reset OTP issues random proof");
+    return verification.data.resetToken as string;
+  }
+  check((await api("/api/health")).status === 200, "Database health endpoint works");
+  for (const body of [[], null, "string", 42]) check((await post("/login", body)).status === 400, "Non-object bodies return 400");
+  for (const identifier of [{}, [], 123, true]) check((await post("/login", { identifier, password: "Password123!" })).status === 400, "Invalid identifier types return 400");
+  resetLimits();
+  const malformed = await fetch(base + "/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{" });
+  check(malformed.status === 400 && (await malformed.json() as any).error === "Invalid JSON", "Malformed JSON returns safe JSON error");
+  check((await post("/login", { password: "x".repeat(70000) })).status === 413, "Oversized bodies return 413");
+  check((await post("/refresh", { refreshToken: {} })).status === 400, "Invalid refresh token type rejected");
+  check((await api("/api/admin/stats")).status === 401, "Admin endpoints require authentication");
+  const input = { email: "donor@example.com", password: "Password123!", fullName: "Test Donor", phone: "0771234567", nic: "199012345678", bloodGroup: "A+", dob: "1990-04-10" };
+  resetLimits();
+  check((await post("/register", input)).status === 400, "Registration cannot bypass email verification");
+  check((await post("/register", { ...input, registrationToken: "a".repeat(64) })).status === 400, "Forged registration proof rejected");
+  const registrationToken = await proof(input.email);
+  for (const changes of [{ dob: "1990-02-31" }, { fullName: " " }, { password: {} }, { documentUrl: "javascript:alert(1)" }]) {
+    check((await post("/register", { ...input, registrationToken, ...changes })).status === 400, "Invalid registration fields rejected");
+  }
+  resetLimits();
+  const registration = await post("/register", { ...input, registrationToken });
+  check(registration.status === 201, "Verified donor registration succeeds");
+  const id = registration.data.user.id;
+  check((await db.query("SELECT phone FROM donor_profiles WHERE user_id = $1", [id])).rows[0].phone === "+94771234567", "Canonical donor phone persisted");
+  check((await db.query("SELECT id FROM donor_verifications WHERE donor_id = $1", [id])).rows.length === 0, "Missing document does not create fabricated verification");
+  check((await db.query("SELECT id FROM registration_otps WHERE identifier = $1", [input.email])).rows.length === 0, "Registration proof is consumed");
+  check((await db.query("SELECT token_hash FROM refresh_tokens WHERE user_id = $1", [id])).rows[0].token_hash !== registration.data.refreshToken, "Refresh tokens are hashed in storage");
+  const profile = await me(registration.data.accessToken);
+  check(profile.status === 200 && profile.data.user.email === input.email && !("latitude" in profile.data.user) && !("password_hash" in profile.data.user), "Profile returns owner data without credential or location disclosure");
+  check(profile.headers.get("cache-control") === "no-store", "Authentication responses cannot be cached");
+  check((await post("/register", { ...input, registrationToken })).status === 409, "Duplicate email returns 409");
+  resetLimits();
+  const login = await post("/login", { identifier: " DONOR@EXAMPLE.COM ", password: input.password });
+  check(login.status === 200, "Email login handles case and whitespace");
+  check((await post("/login", { phone: "077 123 4567", password: input.password })).status === 200, "Phone login handles canonical formats");
+  check((await post("/login", { email: input.email, password: "bad" })).status === 401, "Wrong passwords return generic credentials error");
+  check((await api("/api/admin/users", undefined, login.data.accessToken)).status === 403, "Donors cannot access admin endpoints");
+  check((await me(login.data.accessToken + "bad")).status === 401, "Tampered tokens are rejected");
+  assert.throws(() => verifyRefreshToken(login.data.accessToken)); passed++;
+  assert.throws(() => verifyAccessToken(login.data.refreshToken)); passed++;
+  const signedClaims = verifyAccessToken(login.data.accessToken);
+  const staleAdmin = signAccessToken({ ...signedClaims, id: String(id), role: "admin" });
+  check((await api("/api/admin/users", undefined, staleAdmin)).status === 403, "Current database roles override stale JWT roles");
+
+  resetLimits(); await db.query("UPDATE users SET failed_login_attempts = 0 WHERE id = $1", [id]);
+  const failures = await Promise.all(Array.from({ length: 5 }, () => post("/login", { email: input.email, password: "Wrong123!" })));
+  check(failures.every(r => r.status === 401), "Concurrent wrong logins return 401");
+  check((await db.query("SELECT failed_login_attempts FROM users WHERE id = $1", [id])).rows[0].failed_login_attempts === 5, "Login lockout counter is race-safe");
+  check((await post("/login", { email: input.email, password: input.password })).status === 423, "Locked account rejects correct password");
+  check((await post("/login", { email: input.email, password: "Wrong123!" })).status === 401, "Lockout does not reveal account existence to incorrect credentials");
+  await db.query("UPDATE users SET locked_until = NOW() - INTERVAL '1 second' WHERE id = $1", [id]);
+  await post("/login", { email: input.email, password: "Wrong123!" });
+  check((await db.query("SELECT failed_login_attempts FROM users WHERE id = $1", [id])).rows[0].failed_login_attempts === 1, "Expired lockout resets attempt window");
+  check((await post("/login", { email: input.email, password: input.password })).status === 200, "Login recovers after lockout expiry");
+
+  resetLimits();
+  const known = await post("/forgot-password", { email: input.email }), unknown = await post("/forgot-password", { email: "unknown@example.com" });
+  check(known.status === unknown.status && JSON.stringify(known.data) === JSON.stringify(unknown.data), "Reset request hides account existence and OTP");
+  check((await post("/verify-reset-otp", { email: "unknown@example.com", otp: "000000" })).status === 400, "Unknown reset accounts return generic verification failure");
+  check((await db.query("SELECT id FROM password_reset_email_jobs WHERE user_id = $1 AND status = 'pending'", [id])).rows.length === 1, "Reset email jobs persist before delivery");
+  await processPasswordResetJobs();
+  const row = (await db.query("SELECT id FROM password_reset_tokens WHERE user_id = $1 ORDER BY id DESC LIMIT 1", [id])).rows[0];
+  check((await post("/reset-password", { email: input.email, resetTokenId: row.id, password: "Hacked123!" })).status === 400, "Critical numeric-ID reset bypass is blocked");
+  check((await post("/reset-password", { resetToken: String(row.id), password: "Hacked123!" })).status === 400, "Numeric reset tokens are rejected");
+  check((await post("/verify-reset-otp", { email: input.email, otp: "000000" })).status === 400, "Wrong reset OTP is rejected");
+  const verified = await post("/verify-reset-otp", { email: input.email, otp: otpFor(input.email) });
+  check(verified.status === 200, "Correct reset OTP verifies");
+  check((await post("/verify-reset-otp", { email: input.email, otp: otpFor(input.email) })).status === 400, "Verified reset OTP cannot be replayed");
+  const grant = (await db.query("SELECT reset_token_hash, verified_at FROM password_reset_tokens WHERE id = $1", [row.id])).rows[0];
+  check(grant.verified_at && grant.reset_token_hash !== verified.data.resetToken, "Reset proof is hashed and linked to OTP verification");
+  const resetToken = verified.data.resetToken;
+  check((await post("/reset-password", { email: "other@example.com", resetToken, password: "NewPassword123!" })).status === 400, "Reset proof is bound to its account");
+  check((await post("/reset-password", { resetToken, password: "NewPassword123!", confirmPassword: "different" })).status === 400, "Password confirmation mismatch rejected");
+  resetLimits();
+  const resets = await Promise.all([1, 2].map(() => post("/reset-password", { resetToken, password: "NewPassword123!" })));
+  check(resets.filter(r => r.status === 200).length === 1 && resets.filter(r => r.status === 400).length === 1, "Concurrent password resets consume proof exactly once");
+  check((await me(login.data.accessToken)).status === 401, "Reset immediately invalidates old access sessions");
+  check((await post("/refresh", { refreshToken: login.data.refreshToken })).status === 401, "Reset invalidates old refresh tokens");
+  check((await post("/login", { email: input.email, password: input.password })).status === 401, "Old password stops working");
+  const newLogin = await post("/login", { email: input.email, password: "NewPassword123!" });
+  check(newLogin.status === 200, "New password works");
+  check((await post("/reset-password", { resetToken, password: "Another123!" })).status === 400, "Used reset proof is rejected");
+
+  await allowResend(id); const expiredOtp = await createPasswordResetOtp(id);
+  await db.query("UPDATE password_reset_tokens SET expires_at = NOW() - INTERVAL '1 second' WHERE user_id = $1", [id]);
+  check(!(await verifyPasswordResetOtp(id, expiredOtp)).valid, "Expired reset OTP rejected");
+  await allowResend(id); const limitedOtp = await createPasswordResetOtp(id);
+  await Promise.all(Array.from({ length: 8 }, () => verifyPasswordResetOtp(id, "000000")));
+  check((await db.query("SELECT attempts FROM password_reset_tokens WHERE user_id = $1 AND used_at IS NULL", [id])).rows[0].attempts === 5, "Concurrent OTP guesses cannot exceed attempt limit");
+  check(!(await verifyPasswordResetOtp(id, limitedOtp)).valid, "Exhausted OTP rejects even correct code");
+  await allowResend(id); const singleOtp = await createPasswordResetOtp(id);
+  const verifications = await Promise.all([1, 2].map(() => verifyPasswordResetOtp(id, singleOtp)));
+  check(verifications.filter(r => r.valid).length === 1, "Concurrent OTP verification issues one proof");
+  await db.query("UPDATE password_reset_tokens SET expires_at = NOW() - INTERVAL '1 second' WHERE user_id = $1", [id]);
+  resetLimits();
+  check((await post("/reset-password", { resetToken: verifications.find(r => r.valid)!.resetToken, password: "Expired123!" })).status === 400, "Expired verified proof rejected");
+  const oldGrant = await resetProof(input.email, id); await allowResend(id); await createPasswordResetOtp(id);
+  check((await post("/reset-password", { resetToken: oldGrant, password: "Invalid123!" })).status === 400, "New reset request invalidates previous proofs");
+
+  const pair = await issueTokenPair({ id: String(id), role: "donor", orgId: null });
+  const rotations = await Promise.all([1, 2].map(() => rotateRefreshToken(pair.refreshToken)));
+  check(rotations.filter(Boolean).length === 1, "Concurrent refresh rotates once");
+  check((await db.query("SELECT is_revoked FROM refresh_tokens WHERE family_id = $1", [pair.familyId])).rows.every(r => r.is_revoked), "Refresh reuse revokes entire family");
+  check((await me(rotations.find(Boolean)!.accessToken)).status === 401, "Reuse invalidates descendant access tokens");
+  const pair2 = await issueTokenPair({ id: String(id), role: "donor", orgId: null }), rotated = await rotateRefreshToken(pair2.refreshToken);
+  await cleanupExpiredTokens();
+  check((await db.query("SELECT id FROM refresh_tokens WHERE family_id = $1", [pair2.familyId])).rows.length === 2, "Cleanup preserves ancestors for reuse detection");
+  await runMigrations();
+  check((await me(rotated!.accessToken)).status === 200, "Repeated migration preserves live sessions");
+  check((await post("/logout", { refreshToken: rotated!.refreshToken })).status === 200, "Logout succeeds");
+  check((await me(rotated!.accessToken)).status === 401 && (await post("/refresh", { refreshToken: rotated!.refreshToken })).status === 401, "Logout revokes access and refresh tokens");
+
+  const adminUser = (await db.query("INSERT INTO users (email, password_hash, role) VALUES ('admin@example.com', $1, 'admin') RETURNING id", [hash])).rows[0];
+  const adminToken = (await issueTokenPair({ id: String(adminUser.id), role: "admin", orgId: null })).accessToken;
+  resetLimits();
+  check((await api("/api/admin/users/" + id + "/status", { status: "suspended" }, adminToken, "PATCH")).status === 200, "Admin can suspend user");
+  check((await me(newLogin.data.accessToken)).status === 401 && (await post("/login", { email: input.email, password: "NewPassword123!" })).status === 403, "Suspension revokes sessions and blocks login");
+  check((await api("/api/admin/users/" + adminUser.id + "/status", { status: "suspended" }, adminToken, "PATCH")).status === 403, "Admin cannot suspend self");
+  check((await api("/api/admin/users/" + id + "/status", { status: "active" }, adminToken, "PATCH")).status === 200, "Admin can reactivate user");
+  check((await me(newLogin.data.accessToken)).status === 401, "Reactivation cannot restore revoked sessions");
+  check((await api("/api/admin/audit-logs?limit=-1", undefined, adminToken)).status === 400, "Invalid pagination rejected");
+  const deletedActor = (await db.query("INSERT INTO users (email, password_hash, role) VALUES ('deleted@example.com', $1, 'donor') RETURNING id", [hash])).rows[0];
+  const oldAudit = (await db.query("INSERT INTO audit_logs (actor_user_id, action) VALUES ($1, 'DELETED_ACTOR_TEST') RETURNING id", [deletedActor.id])).rows[0];
+  await db.query("DELETE FROM users WHERE id = $1", [deletedActor.id]);
+  check((await api("/api/admin/audit-logs?action=DELETED_ACTOR_TEST", undefined, adminToken)).data.logs.some((log: any) => log.id === oldAudit.id), "Deleted actors remain visible in audit history");
+  check((await api("/api/admin/users/bad/status", { status: "active" }, adminToken, "PATCH")).status === 400, "Invalid IDs return 400");
+  const donorToken = (await issueTokenPair({ id: String(id), role: "donor", orgId: null })).accessToken;
+  const submitted = await api("/api/donors/submit", { documentUrl: "https://example.com/proof.pdf", claimedBloodGroup: "O+" }, donorToken);
+  check(submitted.status === 201, "Donor document submission succeeds");
+  check((await api("/api/donors/submit", { documentUrl: "https://example.com/second.pdf", claimedBloodGroup: "O+" }, donorToken)).status === 409, "Duplicate pending verification rejected");
+  check((await api("/api/donors/admin/pending", undefined, adminToken)).status === 200, "Admin can list pending reviews");
+  check((await api("/api/donors/admin/" + submitted.data.verification.id + "/approve", {}, adminToken, "PATCH")).status === 200, "Admin approval succeeds");
+  const verifiedProfile = (await db.query("SELECT blood_group, blood_group_verified FROM donor_profiles WHERE user_id = $1", [id])).rows[0];
+  check(verifiedProfile.blood_group === "O+" && verifiedProfile.blood_group_verified, "Approval atomically updates verified blood group");
+  check((await api("/api/donors/admin/" + submitted.data.verification.id + "/approve", {}, adminToken, "PATCH")).status === 404, "Repeated approval rejected");
+
+  resetLimits();
+  const org = await api("/api/organizations/register", { name: "Test Hospital", type: "hospital" });
+  check(org.status === 201 && org.data.organization.verification_status === "pending", "Organization registration requires review");
+  const orgId = org.data.organization.id;
+  const staffInput = { email: "STAFF@EXAMPLE.COM", password: "Password123!", role: "hospital_staff", organizationId: orgId };
+  check((await api("/api/staff/register", staffInput)).status === 403, "Unapproved organization blocks staff registration");
+  check((await api("/api/organizations/admin/" + orgId + "/approve", {}, adminToken, "PATCH")).status === 200, "Organization approval succeeds");
+  const staff = await api("/api/staff/register", staffInput);
+  check(staff.status === 201 && staff.data.user.email === "staff@example.com" && staff.data.user.status === "suspended", "Staff registration normalizes email and awaits approval");
+  check((await api("/api/staff/register", { ...staffInput, email: "wrong@example.com", role: "bloodbank_staff" })).status === 400, "Staff role must match organization");
+  check((await api("/api/staff/admin/" + staff.data.user.id + "/approve", {}, adminToken, "PATCH")).status === 200, "Staff approval succeeds");
+  resetLimits(); const staffLogin = await post("/login", { email: "staff@example.com", password: "Password123!" });
+  check(staffLogin.status === 200, "Approved staff can log in");
+  await db.query("UPDATE organizations SET verification_status = 'rejected' WHERE id = $1", [orgId]);
+  check((await me(staffLogin.data.accessToken)).status === 403, "Organization rejection blocks staff immediately");
+  check((await post("/refresh", { refreshToken: staffLogin.data.refreshToken })).status === 401, "Rejected organization cannot refresh staff tokens");
+
+  const otherProof = await proof("other@example.com");
+  check((await post("/register", { ...input, email: "other@example.com", phone: "0777654321", registrationToken: otherProof })).status === 409, "Database rejects duplicate NIC");
+  check((await db.query("SELECT id FROM users WHERE email = 'other@example.com'")).rows.length === 0, "Registration failure rolls back user and tokens");
+  check((await db.query("SELECT id FROM registration_otps WHERE identifier = 'other@example.com'")).rows.length === 1, "Failed registration preserves proof for retry");
+  resetLimits();
+  check((await post("/register", { ...input, email: "other@example.com", nic: "199099999999", registrationToken: otherProof })).status === 409, "Database rejects duplicate phone");
+  check((await post("/register", { ...input, email: "other@example.com", nic: "199099999999", phone: "0777654321", registrationToken: otherProof })).status === 201, "Corrected registration succeeds");
+  const concurrentEmail = "concurrent@example.com", otp = await createRegistrationOtp(concurrentEmail, "email");
+  const proofs = await Promise.all([1, 2].map(() => verifyRegistrationOtp(concurrentEmail, "email", otp)));
+  check(proofs.filter(r => r.valid).length === 1, "Concurrent registration OTP verification issues one proof");
+  resetLimits();
+  const concurrentInput = { ...input, email: concurrentEmail, phone: "0776666666", nic: "199011111111", registrationToken: proofs.find(r => r.valid)!.registrationToken };
+  const registrations = await Promise.all([1, 2].map(() => post("/register", concurrentInput)));
+  check(registrations.filter(r => r.status === 201).length === 1 && registrations.every(r => r.status < 500), "Concurrent registration creates one user without server errors");
+
+  resetLimits(); await allowResend(id); failEmail = true;
+  const failedMail = await post("/forgot-password", { email: input.email }), missingMail = await post("/forgot-password", { email: "missing@example.com" });
+  await processPasswordResetJobs();
+  check(JSON.stringify(failedMail.data) === JSON.stringify(missingMail.data), "Email outage does not reveal account existence");
+  check((await db.query("SELECT id FROM password_reset_tokens WHERE user_id = $1 AND used_at IS NULL", [id])).rows.length === 0, "Email delivery failure invalidates challenge");
+  check((await db.query("SELECT status FROM password_reset_email_jobs WHERE user_id = $1", [id])).rows[0].status === "pending", "Email delivery failures are queued for retry");
+  failEmail = false;
+  await allowResend(id);
+  await db.query("UPDATE password_reset_email_jobs SET next_attempt_at = NOW() WHERE user_id = $1", [id]);
+  const emailCount = emails.length;
+  await Promise.all([processPasswordResetJobs(), processPasswordResetJobs()]);
+  check(emails.length === emailCount + 1, "Concurrent queue workers deliver each pending job once");
+  check((await db.query("SELECT status, attempts FROM password_reset_email_jobs WHERE user_id = $1", [id])).rows[0].status === "sent", "Email retry succeeds after outage recovery");
+  await allowResend(id);
+  await db.query("UPDATE password_reset_email_jobs SET status = 'processing', attempts = 0, lease_until = NOW() - INTERVAL '1 second' WHERE user_id = $1", [id]);
+  await processPasswordResetJobs();
+  check((await db.query("SELECT status FROM password_reset_email_jobs WHERE user_id = $1", [id])).rows[0].status === "sent", "Expired worker lease is recovered after restart");
+  failEmail = true;
+  await db.query("UPDATE password_reset_email_jobs SET status = 'pending', attempts = 2, next_attempt_at = NOW() WHERE user_id = $1", [id]);
+  await allowResend(id); await processPasswordResetJobs();
+  check((await db.query("SELECT status FROM password_reset_email_jobs WHERE user_id = $1", [id])).rows[0].status === "failed", "Repeated email failures stop after three attempts");
+  failEmail = false; process.env.NODE_ENV = "production";
+  assert.throws(() => createApp(), /Configure SMTP/); passed++;
+  process.env.NODE_ENV = "test";
+  check(true, "Production refuses console-only email");
+  resetLimits();
+  for (let i = 0; i < 10; i++) {
+    const response = await fetch(base + "/api/auth/login", {
+      method: "POST", headers: { "Content-Type": "application/json", "X-Forwarded-For": "198.51.100." + (i + 1) },
+      body: JSON.stringify({ email: "missing" + i + "@example.com", password: "Password123!" }),
+    });
+    check(response.status === 401, "Login attempts tracked per IP across identifiers");
+  }
+  check((await post("/login", { email: "different@example.com", password: "Password123!" })).status === 429, "Identifier and forwarding-header changes cannot bypass rate limit");
+  console.log("\n" + passed + " security and integration checks passed.");
+}
+main().catch(error => { console.error("Test failed:", error); process.exitCode = 1; }).finally(async () => {
+  if (server) await new Promise<void>(resolve => server!.close(() => resolve()));
+  await pool?.end(); await fresh?.end();
+  for (const name of created.reverse()) await admin.query('DROP DATABASE "' + name + '" WITH (FORCE)');
+  await admin.end();
+});
+
