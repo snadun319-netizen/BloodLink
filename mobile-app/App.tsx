@@ -17,8 +17,9 @@ import { ResetPasswordStep2Screen } from './src/screens/ResetPasswordStep2Screen
 import { ResetPasswordStep3Screen } from './src/screens/ResetPasswordStep3Screen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { DevScreenPicker } from './src/components/DevScreenPicker';
-
 import { ScreenName, RegistrationData } from './src/types/navigation';
+import ProfileFlow from './src/profile/ProfileFlow';
+
 
 import { AuthProvider } from './src/context/AuthContext';
 
@@ -184,6 +185,9 @@ export default function App() {
             resetToken={resetToken}
           />
         );
+
+      case 'Profile':
+        return <ProfileFlow onSignOut={() => setCurrentScreen('Welcome')} />;
 
       default:
         return (
