@@ -120,6 +120,7 @@ export default function VerificationSection({ profile, uploading, onUpload }: Pr
                 disabled={uploadDisabled}
                 accessibilityRole="button"
                 accessibilityLabel="Upload verification document"
+                accessibilityState={{ disabled: uploadDisabled, busy: uploading }}
                 style={({ pressed }) => [
                     styles.uploadButton,
                     (uploadDisabled || pressed) && { opacity: uploadDisabled ? 0.5 : 0.85 },
@@ -131,7 +132,7 @@ export default function VerificationSection({ profile, uploading, onUpload }: Pr
                     <>
                         <Ionicons name="cloud-upload-outline" size={20} color={colors.onDark} />
                         <Text style={styles.uploadText}>
-                            {doc ? 'Upload new verification document' : 'Upload verification document'}
+                            {doc?.status === 'pending' ? 'Document under review' : doc ? 'Upload new verification document' : 'Upload verification document'}
                         </Text>
                     </>
                 )}
@@ -174,14 +175,14 @@ const createStyles = (c: ColorPalette) =>
             borderColor: c.border,
             padding: 18,
         },
-        headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-        sectionTitle: { fontSize: 14, fontWeight: '700', color: c.textMuted, letterSpacing: 0.5 },
+        headerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+        sectionTitle: { fontSize: 12, fontWeight: '500', color: c.textMuted, letterSpacing: 0.5 },
         actionPill: { backgroundColor: c.primarySoft, borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 6 },
-        actionPillText: { color: c.primary, fontWeight: '700', fontSize: 13 },
+        actionPillText: { color: c.primary, fontWeight: '500', fontSize: 12 },
         badgeRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
         badgeIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-        badgeTitle: { fontSize: 16, fontWeight: '700', color: c.text },
-        badgeSub: { fontSize: 13, color: c.textMuted, marginTop: 2 },
+        badgeTitle: { fontSize: 14, lineHeight: 20, fontWeight: '600', color: c.text },
+        badgeSub: { fontSize: 12, lineHeight: 18, color: c.textMuted, marginTop: 3 },
         groupTag: {
             borderWidth: 1,
             borderColor: c.success,
@@ -202,14 +203,14 @@ const createStyles = (c: ColorPalette) =>
             justifyContent: 'center',
             marginRight: 12,
         },
-        docName: { fontSize: 15, fontWeight: '700', color: c.text },
+        docName: { fontSize: 13, lineHeight: 19, fontWeight: '600', color: c.text },
         docMeta: { fontSize: 12, color: c.textMuted, marginTop: 2 },
         docTag: { backgroundColor: c.card, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
         docTagText: { fontWeight: '700', fontSize: 13 },
         reasonBox: { backgroundColor: c.card, borderRadius: 12, padding: 12, marginTop: 12 },
         reasonHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-        reasonTitle: { color: c.danger, fontWeight: '700', fontSize: 14, flexShrink: 1 },
-        reasonText: { color: c.textMuted, fontSize: 14, lineHeight: 20 },
+        reasonTitle: { color: c.danger, fontWeight: '600', fontSize: 13, lineHeight: 19, flexShrink: 1 },
+        reasonText: { color: c.textMuted, fontSize: 12, lineHeight: 19 },
         uploadButton: {
             flexDirection: 'row',
             alignItems: 'center',
@@ -217,9 +218,11 @@ const createStyles = (c: ColorPalette) =>
             gap: 10,
             backgroundColor: c.dark,
             borderRadius: radius.md,
-            height: 52,
+            minHeight: 52,
+            paddingVertical: 12,
+            paddingHorizontal: 12,
             marginTop: 4,
         },
-        uploadText: { color: c.onDark, fontWeight: '700', fontSize: 15 },
+        uploadText: { color: c.onDark, fontWeight: '600', fontSize: 13, lineHeight: 19, flexShrink: 1, textAlign: 'center' },
         helper: { color: c.textMuted, fontSize: 12, marginTop: 8, textAlign: 'center' },
     });

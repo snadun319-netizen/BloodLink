@@ -129,7 +129,7 @@ export const DevScreenPicker: React.FC<DevScreenPickerProps> = ({
 const styles = StyleSheet.create({
   floatingContainer: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 90,
     right: 16,
     zIndex: 9999,
   },
@@ -140,11 +140,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 6,
     gap: 6,
   },
   badgeIndicator: {

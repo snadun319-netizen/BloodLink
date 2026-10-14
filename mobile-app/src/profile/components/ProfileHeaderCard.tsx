@@ -31,15 +31,16 @@ export default function ProfileHeaderCard({ profile, onToggleAvailability, onEdi
                     )}
                 </View>
 
-                <View style={styles.info}>
-                    <Text style={styles.name} numberOfLines={1}>
-                        {profile.fullName}
-                    </Text>
-                    <Text style={styles.sub} numberOfLines={1}>
+                <Pressable style={styles.info} onPress={onEdit} accessibilityRole="button" accessibilityLabel="Edit profile">
+                    <View style={styles.nameRow}>
+                        <Text style={styles.name}>{profile.fullName}</Text>
+                        <Ionicons name="create-outline" size={15} color={colors.textMuted} />
+                    </View>
+                    <Text style={styles.sub}>
                         {profile.phone} • {profile.district}
                     </Text>
                     <Text style={styles.since}>Donor since {formatMonthYear(profile.donorSince)}</Text>
-                </View>
+                </Pressable>
 
                 <View style={styles.bloodBadge}>
                     <Text style={styles.bloodLabel}>BLOOD</Text>
@@ -47,22 +48,12 @@ export default function ProfileHeaderCard({ profile, onToggleAvailability, onEdi
                 </View>
             </View>
 
-            <Pressable
-                onPress={onEdit}
-                accessibilityRole="button"
-                accessibilityLabel="Edit profile"
-                style={styles.editButton}
-            >
-                <Ionicons name="create-outline" size={16} color={colors.primary} />
-                <Text style={styles.editText}>Edit profile</Text>
-            </Pressable>
-
             <View style={styles.divider} />
 
             <View style={styles.availRow}>
                 <View style={{ flex: 1, paddingRight: 12 }}>
                     <Text style={styles.availTitle}>Available to donate</Text>
-                    <Text style={styles.availSub}>Receive matched emergency requests</Text>
+                    <Text style={styles.availSub}>{profile.isAvailable ? 'Receive matched emergency requests' : 'Emergency request alerts are paused'}</Text>
                 </View>
                 <Switch
                     value={profile.isAvailable}
@@ -94,7 +85,7 @@ const createStyles = (c: ColorPalette) =>
             alignItems: 'center',
             justifyContent: 'center',
         },
-        avatarText: { color: c.onPrimary, fontSize: 24, fontWeight: '800' },
+        avatarText: { color: c.onPrimary, fontSize: 22, fontWeight: '600' },
         verifiedDot: {
             position: 'absolute',
             right: -4,
@@ -108,10 +99,11 @@ const createStyles = (c: ColorPalette) =>
             alignItems: 'center',
             justifyContent: 'center',
         },
-        info: { flex: 1, marginLeft: 14, marginRight: 8 },
-        name: { fontSize: 20, fontWeight: '800', color: c.text },
-        sub: { fontSize: 13, color: c.textMuted, marginTop: 2 },
-        since: { fontSize: 13, color: c.textMuted, marginTop: 2 },
+        info: { flex: 1, minWidth: 0, minHeight: 44, justifyContent: 'center', marginLeft: 12, marginRight: 8 },
+        nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+        name: { fontSize: 17, lineHeight: 23, fontWeight: '600', color: c.text, flexShrink: 1 },
+        sub: { fontSize: 12, lineHeight: 18, color: c.textMuted, marginTop: 4 },
+        since: { fontSize: 12, lineHeight: 18, color: c.textMuted, marginTop: 2 },
         bloodBadge: {
             backgroundColor: c.primarySoft,
             borderRadius: 16,
@@ -120,21 +112,9 @@ const createStyles = (c: ColorPalette) =>
             alignItems: 'center',
         },
         bloodLabel: { fontSize: 10, fontWeight: '700', color: c.primary, letterSpacing: 1 },
-        bloodValue: { fontSize: 22, fontWeight: '800', color: c.primary },
-        editButton: {
-            alignSelf: 'flex-start',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            marginTop: 14,
-            paddingVertical: 6,
-            paddingHorizontal: 12,
-            borderRadius: radius.pill,
-            backgroundColor: c.primarySoft,
-        },
-        editText: { color: c.primary, fontWeight: '700', fontSize: 13 },
+        bloodValue: { fontSize: 22, fontWeight: '600', color: c.primary },
         divider: { height: 1, backgroundColor: c.border, marginVertical: 14 },
         availRow: { flexDirection: 'row', alignItems: 'center' },
-        availTitle: { fontSize: 16, fontWeight: '700', color: c.text },
-        availSub: { fontSize: 13, color: c.textMuted, marginTop: 2 },
+        availTitle: { fontSize: 14, fontWeight: '600', color: c.text },
+        availSub: { fontSize: 12, lineHeight: 18, color: c.textMuted, marginTop: 3 },
     });

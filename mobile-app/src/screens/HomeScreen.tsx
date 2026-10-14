@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   Modal,
@@ -12,11 +11,10 @@ import {
 } from 'react-native';
 import {
   Ionicons,
-  MaterialCommunityIcons,
-  FontAwesome5,
   Feather,
 } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import DonorBottomNav, { DonorTab } from '../components/DonorBottomNav';
 
 // TypeScript interfaces for dummy data
 export interface EmergencyMatchData {
@@ -105,6 +103,7 @@ const DUMMY_REQUESTS: BloodRequestItem[] = [
 ];
 
 interface HomeScreenProps {
+  initialTab?: DonorTab;
   onNavigateToRequests?: () => void;
   onNavigateToBanks?: () => void;
   onNavigateToHistory?: () => void;
@@ -112,15 +111,16 @@ interface HomeScreenProps {
   onLogout?: () => void;
 }
 
-type TabKey = 'Home' | 'Requests' | 'Banks' | 'History' | 'Profile';
+type TabKey = DonorTab;
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
+  initialTab = 'Home',
   onNavigateToRequests,
   onNavigateToBanks,
   onNavigateToHistory,
   onNavigateToProfile,
 }) => {
-  const [activeTab, setActiveTab] = useState<TabKey>('Home');
+  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [showEmergencyCard, setShowEmergencyCard] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<BloodRequestItem | null>(null);
   const [responseModalVisible, setResponseModalVisible] = useState(false);
@@ -154,7 +154,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
       {/* TOP HEADER */}
@@ -174,6 +174,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <View style={styles.headerRight}>
           <TouchableOpacity
             style={styles.notificationBellBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Notifications, 5 unread"
             activeOpacity={0.75}
             onPress={() => Alert.alert('Notifications', 'You have 5 unread blood requests and announcements.')}
           >
@@ -183,6 +185,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
           <TouchableOpacity
             style={styles.userAvatarBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Open your profile"
             activeOpacity={0.8}
             onPress={() => handleTabPress('Profile')}
           >
@@ -234,6 +238,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <View style={styles.emergencyActionsRow}>
               <TouchableOpacity
                 style={styles.respondNowButton}
+                accessibilityRole="button"
                 activeOpacity={0.9}
                 onPress={() => setEmergencyModalVisible(true)}
               >
@@ -243,6 +248,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
               <TouchableOpacity
                 style={styles.dismissEmergencyBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Dismiss emergency request"
                 activeOpacity={0.7}
                 onPress={() => setShowEmergencyCard(false)}
               >
@@ -424,7 +431,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
                 {/* Center Details */}
                 <View style={styles.requestInfoCenter}>
-                  <Text style={styles.requestHospitalTitle} numberOfLines={1}>
+                  <Text style={styles.requestHospitalTitle}>
                     {item.hospitalName}
                   </Text>
                   <View style={styles.requestTagsRow}>
@@ -457,6 +464,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   ) : (
                     <TouchableOpacity
                       style={styles.respondLinkBtn}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Respond to ${item.hospitalName}`}
                       activeOpacity={0.7}
                       onPress={() => handleRespondToRequest(item)}
                     >
@@ -470,135 +479,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           })}
         </View>
 
-        {/* Space at the bottom for scrolling past the navigation bar */}
-        <View style={{ height: 90 }} />
       </ScrollView>
 
-      {/* 5. BOTTOM NAVIGATION BAR */}
-      <View style={styles.bottomNavContainer}>
-        {/* Tab 1: Home (Active) */}
-        <TouchableOpacity
-          style={styles.navTabItem}
-          activeOpacity={0.8}
-          onPress={() => handleTabPress('Home')}
-        >
-          <View
-            style={[
-              styles.navIconWrapper,
-              activeTab === 'Home' && styles.navIconWrapperActive,
-            ]}
-          >
-            <Ionicons
-              name={activeTab === 'Home' ? 'home' : 'home-outline'}
-              size={20}
-              color={activeTab === 'Home' ? '#C5162E' : '#64748B'}
-            />
-          </View>
-          <Text
-            style={[
-              styles.navLabel,
-              activeTab === 'Home' && styles.navLabelActive,
-            ]}
-          >
-            Home
-          </Text>
-        </TouchableOpacity>
-
-        {/* Tab 2: Requests */}
-        <TouchableOpacity
-          style={styles.navTabItem}
-          activeOpacity={0.8}
-          onPress={() => handleTabPress('Requests')}
-        >
-          <View style={styles.navIconWrapper}>
-            <Ionicons
-              name={activeTab === 'Requests' ? 'notifications' : 'notifications-outline'}
-              size={21}
-              color={activeTab === 'Requests' ? '#C5162E' : '#64748B'}
-            />
-            <View style={styles.navNotificationBadge}>
-              <Text style={styles.navNotificationBadgeText}>5</Text>
-            </View>
-          </View>
-          <Text
-            style={[
-              styles.navLabel,
-              activeTab === 'Requests' && styles.navLabelActive,
-            ]}
-          >
-            Requests
-          </Text>
-        </TouchableOpacity>
-
-        {/* Tab 3: Banks */}
-        <TouchableOpacity
-          style={styles.navTabItem}
-          activeOpacity={0.8}
-          onPress={() => handleTabPress('Banks')}
-        >
-          <View style={styles.navIconWrapper}>
-            <FontAwesome5
-              name="landmark"
-              size={18}
-              color={activeTab === 'Banks' ? '#C5162E' : '#64748B'}
-            />
-          </View>
-          <Text
-            style={[
-              styles.navLabel,
-              activeTab === 'Banks' && styles.navLabelActive,
-            ]}
-          >
-            Banks
-          </Text>
-        </TouchableOpacity>
-
-        {/* Tab 4: History */}
-        <TouchableOpacity
-          style={styles.navTabItem}
-          activeOpacity={0.8}
-          onPress={() => handleTabPress('History')}
-        >
-          <View style={styles.navIconWrapper}>
-            <Ionicons
-              name={activeTab === 'History' ? 'time' : 'time-outline'}
-              size={21}
-              color={activeTab === 'History' ? '#C5162E' : '#64748B'}
-            />
-          </View>
-          <Text
-            style={[
-              styles.navLabel,
-              activeTab === 'History' && styles.navLabelActive,
-            ]}
-          >
-            History
-          </Text>
-        </TouchableOpacity>
-
-        {/* Tab 5: Profile */}
-        <TouchableOpacity
-          style={styles.navTabItem}
-          activeOpacity={0.8}
-          onPress={() => handleTabPress('Profile')}
-        >
-          <View style={styles.navIconWrapper}>
-            <Ionicons
-              name={activeTab === 'Profile' ? 'person' : 'person-outline'}
-              size={20}
-              color={activeTab === 'Profile' ? '#C5162E' : '#64748B'}
-            />
-          </View>
-          <Text
-            style={[
-              styles.navLabel,
-              activeTab === 'Profile' && styles.navLabelActive,
-            ]}
-          >
-            Profile
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <DonorBottomNav activeTab={activeTab} onSelect={handleTabPress} />
 
       {/* MODAL: EMERGENCY DONATION CONFIRMATION */}
       <Modal
@@ -616,6 +499,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <TouchableOpacity
                 onPress={() => setEmergencyModalVisible(false)}
                 style={styles.modalCloseBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Close request details"
               >
                 <Ionicons name="close" size={20} color="#64748B" />
               </TouchableOpacity>
@@ -646,6 +531,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <View style={styles.modalActionButtons}>
               <TouchableOpacity
                 style={styles.modalConfirmBtn}
+                accessibilityRole="button"
                 activeOpacity={0.85}
                 onPress={() => handleConfirmEnRoute('req-1')}
               >
@@ -654,6 +540,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
               <TouchableOpacity
                 style={styles.modalCancelBtn}
+                accessibilityRole="button"
                 activeOpacity={0.8}
                 onPress={() => setEmergencyModalVisible(false)}
               >
@@ -696,6 +583,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <TouchableOpacity
                 onPress={() => setResponseModalVisible(false)}
                 style={styles.modalCloseBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Close request details"
               >
                 <Ionicons name="close" size={20} color="#64748B" />
               </TouchableOpacity>
@@ -722,6 +611,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <View style={styles.modalActionButtons}>
               <TouchableOpacity
                 style={styles.modalConfirmBtn}
+                accessibilityRole="button"
                 activeOpacity={0.85}
                 onPress={() => selectedRequest && handleConfirmEnRoute(selectedRequest.id)}
               >
@@ -730,6 +620,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
               <TouchableOpacity
                 style={styles.modalCancelBtn}
+                accessibilityRole="button"
                 activeOpacity={0.8}
                 onPress={() => setResponseModalVisible(false)}
               >
@@ -769,12 +660,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 2,
+    paddingRight: 4,
   },
   userNameText: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 21,
+    fontWeight: '600',
     color: '#0F172A',
     letterSpacing: -0.3,
+    flexShrink: 1,
   },
   verifiedBadgeContainer: {
     marginLeft: 6,
@@ -784,7 +677,8 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
+    marginLeft: 8,
   },
   notificationBellBtn: {
     width: 44,
@@ -839,11 +733,6 @@ const styles = StyleSheet.create({
     padding: 20,
     position: 'relative',
     overflow: 'hidden',
-    shadowColor: '#B91C1C',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 6,
   },
   bgDecorativeCircleOne: {
     position: 'absolute',
@@ -867,14 +756,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: 8,
   },
   emergencyPillBadge: {
     backgroundColor: 'rgba(0, 0, 0, 0.24)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    rowGap: 4,
+    maxWidth: '77%',
   },
   pulsingWhiteDot: {
     width: 6,
@@ -890,7 +784,7 @@ const styles = StyleSheet.create({
   emergencyPillText: {
     color: '#FFFFFF',
     fontSize: 10.5,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.4,
   },
   bloodTypeNeededBadge: {
@@ -900,31 +794,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 3,
+    flexShrink: 0,
   },
   bloodTypeNeededText: {
     color: '#B91C1C',
     fontSize: 20,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.5,
   },
   neededLabelText: {
     color: '#0F172A',
     fontSize: 8.5,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.5,
     marginTop: 1,
   },
   emergencyHospitalName: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 21,
+    fontWeight: '700',
     color: '#FFFFFF',
     marginTop: 16,
     letterSpacing: -0.3,
+    lineHeight: 28,
   },
   emergencyDetailsRow: {
     flexDirection: 'row',
@@ -942,6 +833,8 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.95)',
     fontSize: 13,
     fontWeight: '500',
+    flex: 1,
+    lineHeight: 19,
   },
   emergencyActionsRow: {
     flexDirection: 'row',
@@ -951,22 +844,17 @@ const styles = StyleSheet.create({
   respondNowButton: {
     flex: 1,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 14,
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
   },
   respondNowButtonText: {
     color: '#B91C1C',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   arrowIcon: {
     marginLeft: 6,
@@ -994,6 +882,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    rowGap: 8,
+    columnGap: 8,
   },
   eligibilityLabelRow: {
     flexDirection: 'row',
@@ -1001,9 +892,9 @@ const styles = StyleSheet.create({
   },
   eligibilityLabelText: {
     color: '#94A3B8',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 0.4,
     marginLeft: 6,
   },
   qualifiedBadge: {
@@ -1025,15 +916,16 @@ const styles = StyleSheet.create({
   },
   qualifiedBadgeText: {
     color: '#34D399',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
   eligibleHeading: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 19,
+    fontWeight: '600',
     marginTop: 14,
     letterSpacing: -0.2,
+    lineHeight: 26,
   },
   eligibleSubtitle: {
     color: '#94A3B8',
@@ -1065,7 +957,7 @@ const styles = StyleSheet.create({
   donorBloodBadgeText: {
     color: '#E11D48',
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   badgeCheckCircle: {
     position: 'absolute',
@@ -1087,11 +979,13 @@ const styles = StyleSheet.create({
   donorGroupNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    rowGap: 5,
   },
   donorGroupNameText: {
     color: '#FFFFFF',
-    fontSize: 14.5,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
   },
   rhPillBadge: {
     backgroundColor: '#FFFFFF',
@@ -1103,7 +997,7 @@ const styles = StyleSheet.create({
   rhPillText: {
     color: '#C5162E',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   authorityVerifiedRow: {
     flexDirection: 'row',
@@ -1130,7 +1024,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   dateLabelMuted: {
-    color: '#64748B',
+    color: '#94A3B8',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -1149,8 +1043,9 @@ const styles = StyleSheet.create({
   },
   dateValueTextWhite: {
     color: '#FFFFFF',
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700',
+    flexShrink: 1,
   },
   nextEligibleBox: {
     flex: 1,
@@ -1175,8 +1070,9 @@ const styles = StyleSheet.create({
   },
   nextDateValueGreen: {
     color: '#34D399',
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '700',
+    flexShrink: 1,
   },
 
   /* 3. METRIC STATS CARDS */
@@ -1192,12 +1088,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     borderColor: '#FFE4E6',
     borderRadius: 20,
-    padding: 14,
-    shadowColor: '#FFE4E6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 2,
+    padding: 12,
+    minWidth: 0,
   },
   statCardAmber: {
     flex: 1,
@@ -1205,17 +1097,15 @@ const styles = StyleSheet.create({
     borderWidth: 1.2,
     borderColor: '#FEF08A',
     borderRadius: 20,
-    padding: 14,
-    shadowColor: '#FEF08A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 2,
+    padding: 12,
+    minWidth: 0,
   },
   statCardTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   waterDropIconCircle: {
     width: 32,
@@ -1234,7 +1124,7 @@ const styles = StyleSheet.create({
   lifesaverBadgeText: {
     color: '#BE123C',
     fontSize: 9.5,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.4,
   },
   warningIconCircle: {
@@ -1263,7 +1153,7 @@ const styles = StyleSheet.create({
   activeLiveBadgeText: {
     color: '#B45309',
     fontSize: 9.5,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   metricRow: {
     flexDirection: 'row',
@@ -1272,7 +1162,7 @@ const styles = StyleSheet.create({
   },
   metricNumberLarge: {
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '700',
     color: '#0F172A',
     lineHeight: 32,
   },
@@ -1285,7 +1175,7 @@ const styles = StyleSheet.create({
   },
   metricMatchedAmber: {
     fontSize: 12,
-    color: '#D97706',
+    color: '#92400E',
     marginLeft: 4,
     marginBottom: 3,
     fontWeight: '700',
@@ -1301,13 +1191,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 12,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   trendRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   trendText: {
-    color: '#10B981',
+    color: '#087B52',
     fontSize: 11,
     fontWeight: '700',
     marginLeft: 3,
@@ -1333,8 +1225,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nearYouText: {
-    color: '#D97706',
-    fontSize: 11,
+    color: '#92400E',
+    fontSize: 10.5,
     fontWeight: '700',
     marginLeft: 2,
   },
@@ -1353,12 +1245,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 18,
     marginTop: 24,
     marginBottom: 12,
+    gap: 10,
   },
   sectionTitleText: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#0F172A',
     letterSpacing: -0.2,
+    lineHeight: 22,
+    flex: 1,
   },
   seeAllLinkText: {
     fontSize: 13.5,
@@ -1371,17 +1266,12 @@ const styles = StyleSheet.create({
   requestCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
-    padding: 14,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#F1F5F9',
     marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
   },
   requestBloodBadge: {
     width: 44,
@@ -1394,22 +1284,26 @@ const styles = StyleSheet.create({
   requestBloodText: {
     color: '#E11D48',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   requestInfoCenter: {
     flex: 1,
-    marginLeft: 12,
-    marginRight: 8,
+    marginLeft: 10,
+    marginRight: 6,
+    minWidth: 0,
   },
   requestHospitalTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: '#0F172A',
+    lineHeight: 20,
   },
   requestTagsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
+    flexWrap: 'wrap',
+    rowGap: 5,
   },
   priorityPill: {
     paddingHorizontal: 7,
@@ -1424,13 +1318,13 @@ const styles = StyleSheet.create({
   },
   priorityText: {
     fontSize: 10.5,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   priorityTextEmergency: {
     color: '#E11D48',
   },
   priorityTextCritical: {
-    color: '#D97706',
+    color: '#92400E',
   },
   distanceMutedText: {
     color: '#64748B',
@@ -1446,6 +1340,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     paddingHorizontal: 8,
+    minHeight: 44,
   },
   respondLinkText: {
     color: '#C5162E',
@@ -1473,74 +1368,8 @@ const styles = StyleSheet.create({
   enRouteText: {
     color: '#059669',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.4,
-  },
-
-  /* 5. BOTTOM NAVIGATION BAR */
-  bottomNavContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 22,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  navTabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-  },
-  navIconWrapper: {
-    width: 48,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  navIconWrapperActive: {
-    backgroundColor: '#FEE2E2',
-  },
-  navLabel: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  navLabelActive: {
-    color: '#C5162E',
-    fontWeight: '800',
-  },
-  navNotificationBadge: {
-    position: 'absolute',
-    top: -2,
-    right: 4,
-    backgroundColor: '#DC2626',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  navNotificationBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '900',
   },
 
   /* MODALS */
@@ -1570,20 +1399,20 @@ const styles = StyleSheet.create({
   modalEmergencyBadgeText: {
     color: '#E11D48',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.4,
   },
   modalCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   modalHospitalTitle: {
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#0F172A',
     marginTop: 14,
   },
@@ -1620,16 +1449,11 @@ const styles = StyleSheet.create({
     borderRadius: 25,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#C5162E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 3,
   },
   modalConfirmBtnText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   modalCancelBtn: {
     height: 44,

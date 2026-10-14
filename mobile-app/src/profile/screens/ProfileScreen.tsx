@@ -13,6 +13,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import DonorBottomNav, { DonorTab } from '../../components/DonorBottomNav';
 import { ProfileHeaderCard, StatCard, VerificationSection } from '../components';
 import { ProfileState } from '../hooks/useProfile';
 import { ColorPalette, radius, useTheme } from '../theme';
@@ -24,11 +25,13 @@ const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
 interface Props {
     state: ProfileState;
+    onBack: () => void;
+    onNavigateTab: (tab: DonorTab) => void;
     onEdit: () => void;
-    onSignOut: () => void; // wired to the Authentication module later
+    onSignOut: () => Promise<void>;
 }
 
-export default function ProfileScreen({ state, onEdit, onSignOut }: Props) {
+export default function ProfileScreen({ state, onBack, onNavigateTab, onEdit, onSignOut }: Props) {
     const { colors, isDark, toggleTheme } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const { profile, loading, refreshing, uploading, error } = state;
@@ -73,12 +76,17 @@ export default function ProfileScreen({ state, onEdit, onSignOut }: Props) {
     const confirmSignOut = () => {
         Alert.alert('Sign out', 'Do you want to sign out of BloodLink?', [
             { text: 'Cancel', style: 'cancel' },
-            { text: 'Sign out', style: 'destructive', onPress: onSignOut },
+            {
+                text: 'Sign out', style: 'destructive',
+                onPress: () => {
+                    void onSignOut().catch(() => Alert.alert('Could not sign out', 'Please try again.'));
+                },
+            },
         ]);
     };
 
     return (
-        <SafeAreaView style={styles.safe} edges={['top']}>
+        <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
             <View style={styles.titleRow}>
                 <Text style={styles.title}>Profile</Text>
                 <Pressable
@@ -86,6 +94,7 @@ export default function ProfileScreen({ state, onEdit, onSignOut }: Props) {
                     style={styles.themeButton}
                     accessibilityRole="button"
                     accessibilityLabel="Toggle light and dark theme"
+                    accessibilityState={{ selected: isDark }}
                 >
                     <Ionicons name={isDark ? 'moon-outline' : 'sunny-outline'} size={20} color={colors.text} />
                 </Pressable>
@@ -155,6 +164,14 @@ export default function ProfileScreen({ state, onEdit, onSignOut }: Props) {
                     </Text>
                 </ScrollView>
             ) : null}
+            <DonorBottomNav
+                activeTab="Profile"
+                colors={colors}
+                onSelect={(tab) => {
+                    if (tab === 'Home') onBack();
+                    else if (tab !== 'Profile') onNavigateTab(tab);
+                }}
+            />
         </SafeAreaView>
     );
 }
@@ -218,7 +235,7 @@ const createStyles = (c: ColorPalette) =>
             paddingTop: 8,
             paddingBottom: 12,
         },
-        title: { fontSize: 28, fontWeight: '800', color: c.text },
+        title: { fontSize: 22, lineHeight: 30, fontWeight: '600', color: c.text },
         themeButton: {
             width: 44,
             height: 44,
@@ -232,11 +249,11 @@ const createStyles = (c: ColorPalette) =>
         content: { paddingHorizontal: 20, paddingBottom: 40, gap: 14 },
         grid: { flexDirection: 'row', gap: 14 },
         center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-        errorTitle: { fontSize: 18, fontWeight: '700', color: c.text, marginBottom: 6 },
+        errorTitle: { fontSize: 18, fontWeight: '600', color: c.text, marginBottom: 6 },
         errorText: { fontSize: 14, color: c.textMuted, textAlign: 'center', marginBottom: 16 },
         retry: { backgroundColor: c.primary, borderRadius: radius.md, paddingHorizontal: 24, paddingVertical: 12 },
         retryText: { color: c.onPrimary, fontWeight: '700' },
-        disclaimer: { fontSize: 12, color: c.textMuted, textAlign: 'center', paddingHorizontal: 8 },
+        disclaimer: { fontSize: 12, lineHeight: 18, color: c.textMuted, textAlign: 'center', paddingHorizontal: 8 },
         signOut: {
             flexDirection: 'row',
             alignItems: 'center',
@@ -248,6 +265,6 @@ const createStyles = (c: ColorPalette) =>
             borderColor: c.border,
             height: 56,
         },
-        signOutText: { fontSize: 16, fontWeight: '700', color: c.text },
-        footer: { fontSize: 12, color: c.textMuted, textAlign: 'center' },
+        signOutText: { fontSize: 14, fontWeight: '600', color: c.text },
+        footer: { fontSize: 11, lineHeight: 17, color: c.textMuted, textAlign: 'center' },
     });
