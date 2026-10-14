@@ -6,10 +6,13 @@ import {
   listAuditLogs,
 } from "../controllers/admin.controller";
 import { authenticate, requireRole } from "../middleware/auth.middleware";
+import { validateRouteIds, validateAdminQuery } from "../middleware/validation.middleware";
 
 const router = Router();
 
 router.use(authenticate, requireRole("admin"));
+router.use(validateAdminQuery);
+router.use("/users/:id", validateRouteIds);
 
 router.get("/users", listUsers);
 router.patch("/users/:id/status", updateUserStatus);

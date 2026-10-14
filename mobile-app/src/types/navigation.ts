@@ -11,7 +11,8 @@ export type ScreenName =
   | 'ResetPasswordStep1'
   | 'ResetPasswordStep2'
   | 'ResetPasswordStep3'
-  | 'Profile';
+  | 'Profile'
+  | 'Home';
 
 export interface RegistrationData {
   fullName: string;
@@ -21,5 +22,7 @@ export interface RegistrationData {
   nic: string;
   bloodGroup: string;
   otp: string;
+  email?: string;
+  registrationToken?: string;
   documentName?: string;
 }

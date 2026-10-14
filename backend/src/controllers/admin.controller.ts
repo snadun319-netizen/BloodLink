@@ -1,8 +1,11 @@
-import { Request, Response } from "express";
+import { AuthRequest } from "../middleware/auth.middleware";
+import { Response, NextFunction } from "express";
 import { pool } from "../db";
 import { logAudit } from "../services/audit.service";
+import { transaction, HttpError } from "../transaction";
+import { revokeAllUserTokens } from "../services/token.service";
 
-export async function listUsers(req: Request, res: Response) {
+export async function listUsers(req: AuthRequest, res: Response, next: NextFunction) {
   const { role, status } = req.query;
 
   try {
@@ -19,20 +22,19 @@ export async function listUsers(req: Request, res: Response) {
       query += ` AND status = $${params.length}`;
     }
 
-    query += ` ORDER BY created_at DESC`;
+    query += ` ORDER BY created_at DESC LIMIT 100`;
 
     const result = await pool.query(query, params);
     return res.status(200).json({ users: result.rows });
   } catch (err) {
-    console.error("List users error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function updateUserStatus(req: Request, res: Response) {
+export async function updateUserStatus(req: AuthRequest, res: Response, next: NextFunction) {
   const { id } = req.params;
   const { status } = req.body;
-  const adminId = (req as any).user.id;
+  const adminId = req.user!.id;
 
   const allowedStatuses = ["active", "suspended"];
   if (!status || !allowedStatuses.includes(status)) {
@@ -41,15 +43,21 @@ export async function updateUserStatus(req: Request, res: Response) {
       .json({ error: "Status must be 'active' or 'suspended'" });
   }
 
-  if (id === adminId) {
+  if (Number(id) === Number(adminId)) {
     return res.status(403).json({ error: "You cannot change your own status" });
   }
 
   try {
-    const result = await pool.query(
-      `UPDATE users SET status = $1 WHERE id = $2 RETURNING id, email, role, status`,
-      [status, id],
-    );
+    const result = await transaction(async client => {
+      const user = (await client.query("SELECT role, organization_id FROM users WHERE id = $1 FOR UPDATE", [id])).rows[0];
+      if (status === "active" && user && ["hospital_staff", "bloodbank_staff"].includes(user.role)) {
+        const org = (await client.query("SELECT type, verification_status FROM organizations WHERE id = $1", [user.organization_id])).rows[0];
+        if (!org || org.verification_status !== "approved" || org.type !== (user.role === "hospital_staff" ? "hospital" : "bloodbank")) throw new HttpError(403, "Staff organization is not approved for this role");
+      }
+      const updated = await client.query("UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, role, status", [status, id]);
+      if (updated.rows.length) await revokeAllUserTokens(Number(id), client);
+      return updated;
+    });
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
@@ -65,12 +73,11 @@ export async function updateUserStatus(req: Request, res: Response) {
 
     return res.status(200).json({ user: result.rows[0] });
   } catch (err) {
-    console.error("Update user status error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function getDashboardStats(req: Request, res: Response) {
+export async function getDashboardStats(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const [
       totalDonors,
@@ -108,12 +115,11 @@ export async function getDashboardStats(req: Request, res: Response) {
       ),
     });
   } catch (err) {
-    console.error("Get dashboard stats error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function listAuditLogs(req: Request, res: Response) {
+export async function listAuditLogs(req: AuthRequest, res: Response, next: NextFunction) {
   const { action, limit } = req.query;
 
   try {
@@ -121,7 +127,7 @@ export async function listAuditLogs(req: Request, res: Response) {
       SELECT al.id, al.action, al.target_type, al.target_id, al.metadata,
              al.created_at, u.email AS actor_email
       FROM audit_logs al
-      JOIN users u ON al.actor_user_id = u.id
+      LEFT JOIN users u ON al.actor_user_id = u.id
       WHERE 1=1
     `;
     const params: string[] = [];
@@ -140,7 +146,6 @@ export async function listAuditLogs(req: Request, res: Response) {
     const result = await pool.query(query, params);
     return res.status(200).json({ logs: result.rows });
   } catch (err) {
-    console.error("List audit logs error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }

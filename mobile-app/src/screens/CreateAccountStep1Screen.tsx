@@ -125,7 +125,7 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
               <View style={styles.iconInputRow}>
                 <TextInput
                   style={styles.iconInputText}
-                  placeholder="YYYY/MM/DD"
+                  placeholder="YYYY-MM-DD"
                   placeholderTextColor="#94A3B8"
                   value={dob}
                   onChangeText={setDob}

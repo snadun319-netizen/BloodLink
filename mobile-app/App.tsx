@@ -15,14 +15,19 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { ResetPasswordStep1Screen } from './src/screens/ResetPasswordStep1Screen';
 import { ResetPasswordStep2Screen } from './src/screens/ResetPasswordStep2Screen';
 import { ResetPasswordStep3Screen } from './src/screens/ResetPasswordStep3Screen';
+import { HomeScreen } from './src/screens/HomeScreen';
 import { DevScreenPicker } from './src/components/DevScreenPicker';
 import { ScreenName, RegistrationData } from './src/types/navigation';
 import ProfileFlow from './src/profile/ProfileFlow';
 
 
+import { AuthProvider } from './src/context/AuthContext';
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('Splash');
+  const [isNewAccount, setIsNewAccount] = useState(true);
   const [resetEmail, setResetEmail] = useState('');
+  const [resetToken, setResetToken] = useState<string | undefined>(undefined);
 
   const [registrationData, setRegistrationData] = useState<RegistrationData>({
     fullName: '',
@@ -90,12 +95,12 @@ export default function App() {
         return (
           <CreateAccountStep3Screen
             onBack={() => setCurrentScreen('CreateAccountStep2')}
-            onContinue={(otp) => {
-              setRegistrationData((prev) => ({ ...prev, otp }));
+            onContinue={(registrationToken, email) => {
+              setRegistrationData((prev) => ({ ...prev, registrationToken, email }));
               setCurrentScreen('CreateAccountStep4');
             }}
             onSignIn={() => setCurrentScreen('Login')}
-            phoneNumber={`${registrationData.countryCode} ${registrationData.phone}`}
+            initialEmail={registrationData.email}
           />
         );
 
@@ -104,19 +109,22 @@ export default function App() {
           <CreateAccountStep4Screen
             onBack={() => setCurrentScreen('CreateAccountStep3')}
             onSubmit={(docName) => {
+              setIsNewAccount(true);
               setRegistrationData((prev) => ({ ...prev, documentName: docName }));
               setCurrentScreen('RegisteredSuccess');
             }}
             onSignIn={() => setCurrentScreen('Login')}
             bloodGroup={registrationData.bloodGroup}
+            registrationData={registrationData}
           />
         );
 
       case 'RegisteredSuccess':
         return (
           <RegisteredSuccessScreen
-            onGoToDashboard={() => setCurrentScreen('Welcome')}
+            onGoToDashboard={() => setCurrentScreen('Home')}
             bloodGroup={registrationData.bloodGroup}
+            isNewAccount={isNewAccount}
           />
         );
 
@@ -125,11 +133,18 @@ export default function App() {
           <LoginScreen
             onBack={() => setCurrentScreen('Welcome')}
             onSignIn={(_method, _creds) => {
-              // Navigate to dashboard/welcome
-              setCurrentScreen('RegisteredSuccess');
+              setIsNewAccount(false);
+              setCurrentScreen('Home');
             }}
-            onForgotPassword={() => setCurrentScreen('ResetPasswordStep1')}
+            onForgotPassword={() => { setResetToken(undefined); setCurrentScreen('ResetPasswordStep1'); }}
             onRegister={() => setCurrentScreen('Onboarding')}
+          />
+        );
+
+      case 'Home':
+        return (
+          <HomeScreen
+            onLogout={() => setCurrentScreen('Login')}
           />
         );
 
@@ -138,6 +153,7 @@ export default function App() {
           <ResetPasswordStep1Screen
             onBack={() => setCurrentScreen('Login')}
             onSendResetLink={(email) => {
+              setResetToken(undefined);
               setResetEmail(email);
               setCurrentScreen('ResetPasswordStep2');
             }}
@@ -149,7 +165,11 @@ export default function App() {
         return (
           <ResetPasswordStep2Screen
             onBack={() => setCurrentScreen('ResetPasswordStep1')}
-            onVerify={(_otp) => setCurrentScreen('ResetPasswordStep3')}
+            onVerify={(_otp, tokenId) => {
+              if (!tokenId) return;
+              setResetToken(tokenId);
+              setCurrentScreen('ResetPasswordStep3');
+            }}
             onChangeEmail={() => setCurrentScreen('ResetPasswordStep1')}
             email={resetEmail}
           />
@@ -161,6 +181,8 @@ export default function App() {
             onBack={() => setCurrentScreen('ResetPasswordStep2')}
             onResetComplete={() => setCurrentScreen('Login')}
             onSignIn={() => setCurrentScreen('Login')}
+            email={resetEmail}
+            resetToken={resetToken}
           />
         );
 
@@ -183,16 +205,18 @@ export default function App() {
     currentScreen !== 'Login';
 
   return (
-    <View style={styles.container}>
-      <StatusBar style={isLightBackground ? 'dark' : 'light'} />
-      {renderScreen()}
+    <AuthProvider>
+      <View style={styles.container}>
+        <StatusBar style={isLightBackground ? 'dark' : 'light'} />
+        {renderScreen()}
 
-      {/* Floating Screen Switcher for Testing and Review */}
-      <DevScreenPicker
-        currentScreen={currentScreen}
-        onSelectScreen={(screen) => setCurrentScreen(screen)}
-      />
-    </View>
+        {/* Floating Screen Switcher for Testing and Review */}
+        {__DEV__ && <DevScreenPicker
+          currentScreen={currentScreen}
+          onSelectScreen={(screen) => setCurrentScreen(screen)}
+        />}
+      </View>
+    </AuthProvider>
   );
 }
 

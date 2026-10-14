@@ -11,16 +11,21 @@ import {
 } from 'react-native';
 import { CheckIcon, WaterDropIcon, AlertBellIcon } from '../components/Icons';
 import { colors } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
 
 interface RegisteredSuccessScreenProps {
   onGoToDashboard: () => void;
   bloodGroup?: string;
+  isNewAccount?: boolean;
 }
 
 export const RegisteredSuccessScreen: React.FC<RegisteredSuccessScreenProps> = ({
   onGoToDashboard,
   bloodGroup = 'AB-',
+  isNewAccount = true,
 }) => {
+  const { user } = useAuth();
+  const hasDocument = user?.verificationStatus === 'pending';
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -50,21 +55,21 @@ export const RegisteredSuccessScreen: React.FC<RegisteredSuccessScreenProps> = (
 
           {/* Floating Blood Group Chip */}
           <View style={styles.bloodChip}>
-            <Text style={styles.bloodChipText}>{bloodGroup}</Text>
+            <Text style={styles.bloodChipText}>{user?.bloodGroup || bloodGroup}</Text>
           </View>
         </View>
 
         {/* Headings */}
-        <Text style={styles.title}>You're registered!</Text>
+        <Text style={styles.title}>{isNewAccount ? "You're registered!" : "You're signed in!"}</Text>
         <Text style={styles.subtitle}>
-          Your blood group verification document is under review. You'll receive a notification once approved.
+          {hasDocument ? "Your blood group verification document is under review." : "Your account is ready. Blood group verification requires a document review."}
         </Text>
 
         {/* Pending Verification Card */}
         <View style={styles.pendingCard}>
-          <Text style={styles.pendingTitle}>Pending Verification</Text>
+          <Text style={styles.pendingTitle}>{user?.verificationStatus === 'approved' ? 'Blood Group Verified' : hasDocument ? 'Pending Verification' : 'Blood Group Unverified'}</Text>
           <Text style={styles.pendingBody}>
-            Your blood group will be verified by a BloodLink administrator. This usually takes 1–2 business days.
+            {user?.verificationStatus === 'approved' ? 'Your blood group has been reviewed by a BloodLink administrator.' : 'A BloodLink administrator must review a document before your blood group can be verified.'}
           </Text>
         </View>
 
@@ -101,7 +106,7 @@ export const RegisteredSuccessScreen: React.FC<RegisteredSuccessScreenProps> = (
           activeOpacity={0.85}
           onPress={onGoToDashboard}
         >
-          <Text style={styles.primaryButtonText}>Go to Dashboard</Text>
+          <Text style={styles.primaryButtonText}>Continue</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

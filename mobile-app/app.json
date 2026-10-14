@@ -23,7 +23,8 @@
     },
     "plugins": [
       "expo-status-bar",
-      "expo-font"
+      "expo-font",
+      "expo-secure-store"
     ]
   }
 }

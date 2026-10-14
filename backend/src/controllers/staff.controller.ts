@@ -1,9 +1,10 @@
-import { Request, Response } from "express";
+import { AuthRequest } from "../middleware/auth.middleware";
+import { Response, NextFunction } from "express";
 import { pool } from "../db";
 import { hashPassword } from "../services/password.service";
 import { logAudit } from "../services/audit.service";
 
-export async function registerStaff(req: Request, res: Response) {
+export async function registerStaff(req: AuthRequest, res: Response, next: NextFunction) {
   const { email, password, role, organizationId } = req.body;
 
   if (!email || !password || !role || !organizationId) {
@@ -19,7 +20,7 @@ export async function registerStaff(req: Request, res: Response) {
 
   try {
     const org = await pool.query(
-      `SELECT id, verification_status FROM organizations WHERE id = $1`,
+      `SELECT id, type, verification_status FROM organizations WHERE id = $1`,
       [organizationId],
     );
 
@@ -31,6 +32,10 @@ export async function registerStaff(req: Request, res: Response) {
       return res
         .status(403)
         .json({ error: "Organization is not yet approved" });
+    }
+
+    if (org.rows[0].type !== (role === "hospital_staff" ? "hospital" : "bloodbank")) {
+      return res.status(400).json({ error: "Staff role does not match organization type" });
     }
 
     const existing = await pool.query("SELECT id FROM users WHERE email = $1", [
@@ -51,12 +56,11 @@ export async function registerStaff(req: Request, res: Response) {
 
     return res.status(201).json({ user: result.rows[0] });
   } catch (err) {
-    console.error("Register staff error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function listPendingStaff(req: Request, res: Response) {
+export async function listPendingStaff(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const result = await pool.query(
       `SELECT u.id, u.email, u.role, u.status, u.created_at,
@@ -69,20 +73,21 @@ export async function listPendingStaff(req: Request, res: Response) {
 
     return res.status(200).json({ staff: result.rows });
   } catch (err) {
-    console.error("List pending staff error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function approveStaff(req: Request, res: Response) {
+export async function approveStaff(req: AuthRequest, res: Response, next: NextFunction) {
   const { id } = req.params;
-  const adminId = (req as any).user.id;
+  const adminId = req.user!.id;
 
   try {
     const result = await pool.query(
       `UPDATE users
        SET status = 'active'
        WHERE id = $1 AND status = 'suspended' AND role IN ('hospital_staff', 'bloodbank_staff')
+         AND EXISTS (SELECT 1 FROM organizations o WHERE o.id = users.organization_id AND o.verification_status = 'approved'
+           AND o.type = CASE users.role WHEN 'hospital_staff' THEN 'hospital' ELSE 'bloodbank' END)
        RETURNING id, email, role, status`,
       [id],
     );
@@ -103,14 +108,13 @@ export async function approveStaff(req: Request, res: Response) {
 
     return res.status(200).json({ user: result.rows[0] });
   } catch (err) {
-    console.error("Approve staff error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function rejectStaff(req: Request, res: Response) {
+export async function rejectStaff(req: AuthRequest, res: Response, next: NextFunction) {
   const { id } = req.params;
-  const adminId = (req as any).user.id;
+  const adminId = req.user!.id;
 
   try {
     const result = await pool.query(
@@ -138,7 +142,6 @@ export async function rejectStaff(req: Request, res: Response) {
       .status(200)
       .json({ message: "Staff registration rejected", user: result.rows[0] });
   } catch (err) {
-    console.error("Reject staff error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }

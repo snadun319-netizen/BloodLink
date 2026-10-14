@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,28 +9,56 @@ import {
   StatusBar,
   TouchableWithoutFeedback,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import { Header } from '../components/Header';
 import { StepIndicator } from '../components/StepIndicator';
 import { colors } from '../theme/colors';
+import { sendRegistrationOtp, verifyRegistrationOtp } from '../services/authService';
 
 interface CreateAccountStep3ScreenProps {
   onBack: () => void;
-  onContinue: (otp: string) => void;
+  onContinue: (registrationToken: string, email: string) => void;
   onSignIn: () => void;
-  phoneNumber?: string;
+  initialEmail?: string;
 }
 
 export const CreateAccountStep3Screen: React.FC<CreateAccountStep3ScreenProps> = ({
   onBack,
   onContinue,
   onSignIn,
-  phoneNumber = '',
+  initialEmail = '',
 }) => {
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [timerSeconds, setTimerSeconds] = useState(45);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [isSending, setIsSending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
+  const [email, setEmail] = useState(initialEmail);
+  const [sentEmail, setSentEmail] = useState('');
+  const cleanEmail = email.trim().toLowerCase();
+
+  // Send a code when the user requests email verification
+  const handleSendOtp = useCallback(async () => {
+    setIsSending(true);
+    setErrorMessage(null);
+    try {
+      await sendRegistrationOtp(cleanEmail, 'email');
+      setSentEmail(cleanEmail);
+      setDigits(['', '', '', '', '', '']);
+      setTimerSeconds(45);
+    } catch (err: any) {
+      console.warn('Failed to send OTP:', err.message);
+      setErrorMessage(err.message || 'Failed to send OTP code. Please retry.');
+    } finally {
+      setIsSending(false);
+    }
+  }, [cleanEmail]);
+
+
+  // Timer countdown
   useEffect(() => {
     const interval = setInterval(() => {
       setTimerSeconds((prev) => (prev > 0 ? prev - 1 : 0));
@@ -39,6 +67,7 @@ export const CreateAccountStep3Screen: React.FC<CreateAccountStep3ScreenProps> =
   }, []);
 
   const handleTextChange = (text: string, index: number) => {
+    setErrorMessage(null);
     // If user pasted multi-digit string
     if (text.length > 1) {
       const pasted = text.replace(/[^0-9]/g, '').slice(0, 6).split('');
@@ -68,9 +97,32 @@ export const CreateAccountStep3Screen: React.FC<CreateAccountStep3ScreenProps> =
     }
   };
 
-  const formattedTimer = `00:${timerSeconds < 10 ? '0' : ''}${timerSeconds}`;
 
-  const otpValue = digits.join('');
+  const handleVerify = async () => {
+    const otpValue = digits.join('');
+    if (otpValue.length !== 6) {
+      setErrorMessage('Please enter all 6 digits of the OTP code.');
+      return;
+    }
+
+    setIsVerifying(true);
+    setErrorMessage(null);
+
+    try {
+      const res = await verifyRegistrationOtp(sentEmail, 'email', otpValue);
+      if (res.verified) {
+        onContinue(res.registrationToken, sentEmail);
+      } else {
+        setErrorMessage('Verification failed. Please check the code.');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Invalid OTP code. Please try again.');
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const formattedTimer = `00:${timerSeconds < 10 ? '0' : ''}${timerSeconds}`;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -79,12 +131,31 @@ export const CreateAccountStep3Screen: React.FC<CreateAccountStep3ScreenProps> =
 
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <View style={styles.content}>
-          <Text style={styles.title}>Verify Your Number</Text>
+          <Text style={styles.title}>Verify Your Email</Text>
           <Text style={styles.subtitle}>
-            We've sent a 6-digit code to {phoneNumber || 'your phone number'}.
+            {sentEmail ? 'Enter the code sent to ' + sentEmail : 'Verify the email you will use to sign in and recover your account.'}
           </Text>
 
           <StepIndicator currentStep={3} totalSteps={4} />
+          <TextInput
+            style={{ borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 12, padding: 14, marginVertical: 12 }}
+            placeholder="Email address"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            editable={!isSending && !isVerifying}
+          />
+
+          {/* Dev OTP Helper Banner */}
+
+
+          {/* Error Message */}
+          {errorMessage && (
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
 
           {/* 6-box OTP input */}
           <View style={styles.otpRow}>
@@ -100,6 +171,7 @@ export const CreateAccountStep3Screen: React.FC<CreateAccountStep3ScreenProps> =
                     styles.otpBox,
                     digit ? styles.otpBoxFilled : null,
                     isActive ? styles.otpBoxActive : null,
+                    errorMessage ? styles.otpBoxError : null,
                   ]}
                   keyboardType="number-pad"
                   maxLength={1}
@@ -108,6 +180,7 @@ export const CreateAccountStep3Screen: React.FC<CreateAccountStep3ScreenProps> =
                   onKeyPress={(e) => handleKeyPress(e, index)}
                   textAlign="center"
                   autoFocus={index === 0}
+                  editable={!isVerifying}
                 />
               );
             })}
@@ -116,15 +189,19 @@ export const CreateAccountStep3Screen: React.FC<CreateAccountStep3ScreenProps> =
           {/* Resend OTP Row */}
           <View style={styles.resendRow}>
             <Text style={styles.resendPrompt}>Didn't receive code?</Text>
-            <TouchableOpacity
-              disabled={timerSeconds > 0}
-              onPress={() => setTimerSeconds(45)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.resendText, timerSeconds === 0 && { color: colors.primary }]}>
-                Resend OTP {timerSeconds > 0 ? `(${formattedTimer})` : ''}
-              </Text>
-            </TouchableOpacity>
+            {isSending ? (
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 8 }} />
+            ) : (
+              <TouchableOpacity
+                disabled={timerSeconds > 0 || !cleanEmail || isVerifying}
+                onPress={handleSendOtp}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.resendText, timerSeconds === 0 && { color: colors.primary }]}>
+                  {sentEmail ? 'Resend OTP' : 'Send code'} {timerSeconds > 0 ? `(${formattedTimer})` : ''}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </TouchableWithoutFeedback>
@@ -132,11 +209,16 @@ export const CreateAccountStep3Screen: React.FC<CreateAccountStep3ScreenProps> =
       {/* Footer Button */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, isVerifying && { opacity: 0.7 }]}
           activeOpacity={0.85}
-          onPress={() => onContinue(otpValue)}
+          onPress={handleVerify}
+          disabled={isVerifying || isSending || !sentEmail}
         >
-          <Text style={styles.primaryButtonText}>Continue</Text>
+          {isVerifying ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Verify & Continue</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -176,57 +258,95 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginBottom: 10,
   },
+  devBanner: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 14,
+    alignItems: 'center',
+  },
+  devBannerText: {
+    fontSize: 13,
+    color: '#991B1B',
+  },
+  devBannerBold: {
+    fontWeight: '700',
+    color: colors.primary,
+  },
+  errorBanner: {
+    backgroundColor: '#FFF1F2',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: '#E11D48',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
   otpRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 28,
+    marginVertical: 24,
   },
   otpBox: {
     width: 48,
     height: 54,
     borderRadius: 12,
-    backgroundColor: '#F1F5F9',
-    fontSize: 20,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    fontSize: 22,
     fontWeight: '700',
     color: '#0F172A',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
   },
   otpBoxFilled: {
+    borderColor: '#94A3B8',
     backgroundColor: '#FFFFFF',
-    borderColor: '#CBD5E1',
   },
   otpBoxActive: {
     borderColor: colors.primary,
-    backgroundColor: '#FFF5F5',
+    backgroundColor: '#FFFFFF',
+  },
+  otpBoxError: {
+    borderColor: '#E11D48',
   },
   resendRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 4,
+    justifyContent: 'center',
+    marginTop: 8,
   },
   resendPrompt: {
     fontSize: 13,
     color: '#64748B',
+    marginRight: 6,
   },
   resendText: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.primary,
+    color: '#94A3B8',
   },
   footer: {
     paddingHorizontal: 24,
     paddingBottom: 24,
-    paddingTop: 8,
+    paddingTop: 12,
   },
   primaryButton: {
     backgroundColor: colors.primary,
     height: 52,
     borderRadius: 14,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 14,
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   primaryButtonText: {
     color: '#FFFFFF',
@@ -235,7 +355,7 @@ const styles = StyleSheet.create({
   },
   signInLink: {
     alignItems: 'center',
-    paddingVertical: 4,
+    marginTop: 14,
   },
   signInText: {
     fontSize: 13,

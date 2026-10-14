@@ -1,8 +1,9 @@
-import { Request, Response } from "express";
+import { AuthRequest } from "../middleware/auth.middleware";
+import { Response, NextFunction } from "express";
 import { pool } from "../db";
 import { logAudit } from "../services/audit.service";
 
-export async function registerOrganization(req: Request, res: Response) {
+export async function registerOrganization(req: AuthRequest, res: Response, next: NextFunction) {
   const { name, type, registrationEvidenceUrl } = req.body;
 
   if (!name || !type) {
@@ -24,12 +25,11 @@ export async function registerOrganization(req: Request, res: Response) {
 
     return res.status(201).json({ organization: result.rows[0] });
   } catch (err) {
-    console.error("Register organization error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function listPendingOrganizations(req: Request, res: Response) {
+export async function listPendingOrganizations(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const result = await pool.query(
       `SELECT id, name, type, registration_evidence_url, verification_status, created_at
@@ -40,14 +40,13 @@ export async function listPendingOrganizations(req: Request, res: Response) {
 
     return res.status(200).json({ organizations: result.rows });
   } catch (err) {
-    console.error("List pending organizations error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function approveOrganization(req: Request, res: Response) {
+export async function approveOrganization(req: AuthRequest, res: Response, next: NextFunction) {
   const { id } = req.params;
-  const adminId = (req as any).user.id;
+  const adminId = req.user!.id;
 
   try {
     const result = await pool.query(
@@ -74,14 +73,13 @@ export async function approveOrganization(req: Request, res: Response) {
 
     return res.status(200).json({ organization: result.rows[0] });
   } catch (err) {
-    console.error("Approve organization error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }
 
-export async function rejectOrganization(req: Request, res: Response) {
+export async function rejectOrganization(req: AuthRequest, res: Response, next: NextFunction) {
   const { id } = req.params;
-  const adminId = (req as any).user.id;
+  const adminId = req.user!.id;
 
   try {
     const result = await pool.query(
@@ -108,7 +106,6 @@ export async function rejectOrganization(req: Request, res: Response) {
 
     return res.status(200).json({ organization: result.rows[0] });
   } catch (err) {
-    console.error("Reject organization error:", err);
-    return res.status(500).json({ error: "Something went wrong" });
+    return next(err);
   }
 }

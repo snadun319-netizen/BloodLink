@@ -17,6 +17,8 @@ import { PasswordRecoverySteps } from '../components/PasswordRecoverySteps';
 import { SecurityBadge } from '../components/SecurityBadge';
 import { colors } from '../theme/colors';
 
+import { requestPasswordReset } from '../services/authService';
+
 interface ResetPasswordStep1ScreenProps {
   onBack: () => void;
   onSendResetLink: (email: string) => void;
@@ -29,6 +31,27 @@ export const ResetPasswordStep1Screen: React.FC<ResetPasswordStep1ScreenProps> =
   onSignIn,
 }) => {
   const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
+      setErrorMessage('Please enter your email address');
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      await requestPasswordReset(cleanEmail);
+      onSendResetLink(cleanEmail);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to request reset OTP. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -56,6 +79,14 @@ export const ResetPasswordStep1Screen: React.FC<ResetPasswordStep1ScreenProps> =
             Enter your registered email address. We'll send a OTP to your account.
           </Text>
 
+          {errorMessage && (
+            <View style={{ backgroundColor: '#FFF1F2', borderRadius: 8, padding: 10, marginBottom: 12 }}>
+              <Text style={{ color: '#E11D48', fontSize: 12, fontWeight: '600', textAlign: 'center' }}>
+                {errorMessage}
+              </Text>
+            </View>
+          )}
+
           {/* Email Input */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Email address</Text>
@@ -64,9 +95,13 @@ export const ResetPasswordStep1Screen: React.FC<ResetPasswordStep1ScreenProps> =
               placeholder="you@email.com"
               placeholderTextColor="#94A3B8"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                setErrorMessage(null);
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
+              editable={!isLoading}
             />
           </View>
 
@@ -81,11 +116,14 @@ export const ResetPasswordStep1Screen: React.FC<ResetPasswordStep1ScreenProps> =
       {/* Footer */}
       <View style={styles.footer}>
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, isLoading && { opacity: 0.7 }]}
           activeOpacity={0.85}
-          onPress={() => onSendResetLink(email || 'you@email.com')}
+          onPress={handleSubmit}
+          disabled={isLoading}
         >
-          <Text style={styles.primaryButtonText}>Send Reset Link</Text>
+          <Text style={styles.primaryButtonText}>
+            {isLoading ? 'Sending...' : 'Send Reset Link'}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity

@@ -40,7 +40,7 @@ const slides = [
   {
     id: 3,
     tag: 'Privacy First',
-    title: 'Your location\nis always protected',
+    title: 'Your location\nis always \nprotected',
     description:
       'Hospitals never see your exact location. Only your approximate distance and availability are shared.',
     image: require('../../assets/images/onboarding3.jpg'),
