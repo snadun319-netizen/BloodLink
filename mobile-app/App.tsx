@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { DonorTab } from './src/components/DonorBottomNav';
 
 // Screen imports
 import { SplashScreen } from './src/screens/SplashScreen';
@@ -25,6 +27,7 @@ import { AuthProvider } from './src/context/AuthContext';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('Splash');
+  const [homeTab, setHomeTab] = useState<DonorTab>('Home');
   const [isNewAccount, setIsNewAccount] = useState(true);
   const [resetEmail, setResetEmail] = useState('');
   const [resetToken, setResetToken] = useState<string | undefined>(undefined);
@@ -144,7 +147,9 @@ export default function App() {
       case 'Home':
         return (
           <HomeScreen
-            onLogout={() => setCurrentScreen('Login')}
+            initialTab={homeTab}
+            onNavigateToProfile={() => setCurrentScreen('Profile')}
+            onLogout={() => { setHomeTab('Home'); setCurrentScreen('Login'); }}
           />
         );
 
@@ -187,7 +192,13 @@ export default function App() {
         );
 
       case 'Profile':
-        return <ProfileFlow onSignOut={() => setCurrentScreen('Welcome')} />;
+        return (
+          <ProfileFlow
+            onBack={() => { setHomeTab('Home'); setCurrentScreen('Home'); }}
+            onNavigateTab={(tab) => { setHomeTab(tab); setCurrentScreen('Home'); }}
+            onSignOut={() => { setHomeTab('Home'); setCurrentScreen('Welcome'); }}
+          />
+        );
 
       default:
         return (
@@ -205,18 +216,20 @@ export default function App() {
     currentScreen !== 'Login';
 
   return (
-    <AuthProvider>
-      <View style={styles.container}>
-        <StatusBar style={isLightBackground ? 'dark' : 'light'} />
-        {renderScreen()}
+    <SafeAreaProvider>
+      <AuthProvider>
+        <View style={styles.container}>
+          <StatusBar style={isLightBackground ? 'dark' : 'light'} />
+          {renderScreen()}
 
-        {/* Floating Screen Switcher for Testing and Review */}
-        {__DEV__ && <DevScreenPicker
-          currentScreen={currentScreen}
-          onSelectScreen={(screen) => setCurrentScreen(screen)}
-        />}
-      </View>
-    </AuthProvider>
+          {/* Floating Screen Switcher for Testing and Review */}
+          {__DEV__ && process.env.EXPO_PUBLIC_SHOW_SCREEN_PICKER === 'true' && <DevScreenPicker
+            currentScreen={currentScreen}
+            onSelectScreen={(screen) => setCurrentScreen(screen)}
+          />}
+        </View>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 

@@ -38,7 +38,6 @@ export default function StatCard({
                     compact ? styles.valueCompact : styles.value,
                     valueColor ? { color: valueColor } : null,
                 ]}
-                numberOfLines={1}
             >
                 {value}
             </Text>
@@ -51,6 +50,7 @@ const createStyles = (c: ColorPalette) =>
     StyleSheet.create({
         card: {
             flex: 1,
+            minWidth: 0,
             backgroundColor: c.card,
             borderRadius: radius.lg,
             borderWidth: 1,
@@ -58,10 +58,10 @@ const createStyles = (c: ColorPalette) =>
             padding: 16,
             minHeight: 112,
         },
-        topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-        label: { fontSize: 14, color: c.textMuted, fontWeight: '500' },
-        iconBadge: { width: 34, height: 34, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-        value: { fontSize: 32, fontWeight: '800', color: c.text, marginBottom: 2 },
-        valueCompact: { fontSize: 18, fontWeight: '700', color: c.text, marginBottom: 2 },
-        caption: { fontSize: 13, color: c.textMuted },
+        topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 6, marginBottom: 10 },
+        label: { fontSize: 12, lineHeight: 18, color: c.textMuted, fontWeight: '500', flexShrink: 1 },
+        iconBadge: { width: 28, height: 28, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+        value: { fontSize: 30, lineHeight: 37, fontWeight: '600', color: c.text, marginBottom: 2 },
+        valueCompact: { fontSize: 16, lineHeight: 23, fontWeight: '600', color: c.text, marginBottom: 2 },
+        caption: { fontSize: 12, lineHeight: 18, color: c.textMuted },
     });
