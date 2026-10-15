@@ -27,7 +27,10 @@
     "web": "expo start --web",
     "type-check": "tsc --noEmit",
     "lint": "echo \"No linter specified yet\"",
-    "test": "echo \"No tests specified yet\""
+    "test": "echo \"No tests specified yet\"",
+    "test:phone": "node --test tests/phone.test.cjs",
+    "test:birth-date": "node --test tests/birth-date.test.cjs",
+    "test:registration": "node --test tests/registration.test.cjs"
   },
   "private": true
 }

@@ -5,10 +5,10 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   Dimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 
 const { width } = Dimensions.get('window');

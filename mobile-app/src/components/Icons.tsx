@@ -34,7 +34,7 @@ export const CheckIcon: React.FC<IconProps> = ({ size = 18, color = '#10B981', s
 
 export const EyeIcon: React.FC<IconProps> = ({ size = 20, color = '#94A3B8', style }) => {
   return (
-    <View style={[{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }, style]}>
+    <View style={[{ width: size * 1.25, height: size * 1.2, justifyContent: 'center', alignItems: 'center' }, style]}>
       <FA5 name="eye" size={size * 0.9} color={color} />
     </View>
   );
@@ -42,7 +42,7 @@ export const EyeIcon: React.FC<IconProps> = ({ size = 20, color = '#94A3B8', sty
 
 export const EyeOffIcon: React.FC<IconProps> = ({ size = 20, color = '#94A3B8', style }) => {
   return (
-    <View style={[{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }, style]}>
+    <View style={[{ width: size * 1.25, height: size * 1.2, justifyContent: 'center', alignItems: 'center' }, style]}>
       <FA5 name="eye-slash" size={size * 0.9} color={color} />
     </View>
   );

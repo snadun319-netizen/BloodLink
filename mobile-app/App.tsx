@@ -34,8 +34,8 @@ export default function App() {
 
   const [registrationData, setRegistrationData] = useState<RegistrationData>({
     fullName: '',
+    email: '',
     phone: '',
-    countryCode: '+94',
     dob: '',
     nic: '',
     bloodGroup: '',
@@ -73,7 +73,15 @@ export default function App() {
           <CreateAccountStep1Screen
             onBack={() => setCurrentScreen('Onboarding')}
             onContinue={(step1Data) => {
-              setRegistrationData((prev) => ({ ...prev, ...step1Data }));
+              setRegistrationData((prev) => ({
+                ...prev,
+                ...step1Data,
+                ...(prev.email !== step1Data.email || prev.phone !== step1Data.phone ? {
+                  registrationToken: undefined,
+                  registrationOtpSentAt: undefined,
+                  registrationVerifiedAt: undefined,
+                } : {}),
+              }));
               setCurrentScreen('CreateAccountStep2');
             }}
             onSignIn={() => setCurrentScreen('Login')}
@@ -99,11 +107,26 @@ export default function App() {
           <CreateAccountStep3Screen
             onBack={() => setCurrentScreen('CreateAccountStep2')}
             onContinue={(registrationToken, email) => {
-              setRegistrationData((prev) => ({ ...prev, registrationToken, email }));
+              setRegistrationData((prev) => ({
+                ...prev,
+                registrationToken,
+                email,
+                registrationVerifiedAt: prev.registrationToken === registrationToken ? prev.registrationVerifiedAt : Date.now(),
+              }));
               setCurrentScreen('CreateAccountStep4');
             }}
             onSignIn={() => setCurrentScreen('Login')}
-            initialEmail={registrationData.email}
+            email={registrationData.email || ''}
+            phone={registrationData.phone}
+            initialSentAt={registrationData.registrationOtpSentAt}
+            initialToken={registrationData.registrationToken}
+            initialVerifiedAt={registrationData.registrationVerifiedAt}
+            onCodeSent={(sentAt) => setRegistrationData((prev) => ({
+              ...prev,
+              registrationOtpSentAt: sentAt,
+              registrationToken: undefined,
+              registrationVerifiedAt: undefined,
+            }))}
           />
         );
 
@@ -223,7 +246,7 @@ export default function App() {
           {renderScreen()}
 
           {/* Floating Screen Switcher for Testing and Review */}
-          {__DEV__ && process.env.EXPO_PUBLIC_SHOW_SCREEN_PICKER === 'true' && <DevScreenPicker
+          {__DEV__ && process.env.EXPO_PUBLIC_SHOW_SCREEN_PICKER !== 'false' && <DevScreenPicker
             currentScreen={currentScreen}
             onSelectScreen={(screen) => setCurrentScreen(screen)}
           />}

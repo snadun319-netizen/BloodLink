@@ -5,10 +5,10 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckIcon, WaterDropIcon, AlertBellIcon } from '../components/Icons';
 import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';

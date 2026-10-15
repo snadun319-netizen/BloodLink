@@ -5,9 +5,9 @@ import {
   StyleSheet,
   Image,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 
 interface WelcomeSelectionScreenProps {
@@ -20,11 +20,11 @@ export const WelcomeSelectionScreen: React.FC<WelcomeSelectionScreenProps> = ({
   onLogIn,
 }) => {
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#C5162E" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
       {/* Top Banner section */}
-      <View style={styles.topSection}>
+      <SafeAreaView style={styles.topSection} edges={['top', 'left', 'right']}>
         <View style={styles.logoCard}>
           <Image
             source={require('../../assets/images/logo.png')}
@@ -35,10 +35,10 @@ export const WelcomeSelectionScreen: React.FC<WelcomeSelectionScreenProps> = ({
 
         <Text style={styles.appName}>BloodLink</Text>
         <Text style={styles.tagline}>SMART BLOOD DONATION</Text>
-      </View>
+      </SafeAreaView>
 
       {/* Bottom Action section */}
-      <View style={styles.bottomSection}>
+      <SafeAreaView style={styles.bottomSection} edges={['bottom', 'left', 'right']}>
         <View style={styles.contentWrap}>
           <Text style={styles.description}>
             Your smart assistant for life-saving connections.
@@ -62,8 +62,8 @@ export const WelcomeSelectionScreen: React.FC<WelcomeSelectionScreenProps> = ({
             </TouchableOpacity>
           </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 };
 
@@ -74,12 +74,12 @@ const styles = StyleSheet.create({
   },
   topSection: {
     flex: 1.25,
-    backgroundColor: '#C5162E',
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
   logoCard: {
     width: 92,
