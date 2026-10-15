@@ -17,7 +17,13 @@ the server terminal. OTPs are never returned by the HTTP API. For actual deliver
 `SMTP_USER` and `SMTP_PASS`. Port 465 uses TLS; other ports require STARTTLS. Production
 startup fails if email transport is missing or configured as console.
 
-Registration verifies the recovery **email**, rather than simulating SMS delivery:
+Registration currently verifies the recovery **email**. The mobile app collects both
+email and mobile number in Personal Details, then sends an email code automatically
+when the verification step opens. The mobile number is saved but remains unverified;
+SMS delivery and phone OTP verification are deferred until an SMS provider is added.
+No SMS provider is configured and signup currently requires only email OTP.
+
+The registration API flow is:
 
 1. `POST /api/auth/send-otp` with `{ "identifier": "donor@example.com", "type": "email" }`.
 2. `POST /api/auth/verify-otp` with the same identifier/type and the six-digit `otp`.

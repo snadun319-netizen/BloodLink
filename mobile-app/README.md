@@ -40,6 +40,9 @@ verification cards, and bottom navigation. Typography, text wrapping, contrast,
 and touch targets are refined within that design. The Profile theme control
 supports both light and dark appearances.
 
-The development screen switcher is opt-in so it does not cover navigation or
-form controls. To enable it, add `EXPO_PUBLIC_SHOW_SCREEN_PICKER=true` to the
-mobile app's local `.env` and restart Expo. It is never included in production.
+The development screen switcher is visible by default in Expo development mode.
+Tap the **Screens** button near the bottom-right corner and select any screen
+to preview it without completing preceding forms. This changes the displayed
+screen; real sign-in, registration, and verification still use the backend.
+For unobstructed screenshots, set `EXPO_PUBLIC_SHOW_SCREEN_PICKER=false` in the
+mobile app's local `.env` and restart Expo. The switcher is hidden in production.

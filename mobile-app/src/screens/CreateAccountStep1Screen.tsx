@@ -5,31 +5,35 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
 import { StepIndicator } from '../components/StepIndicator';
-import { CalendarIcon, ChevronDownIcon, ShieldIcon } from '../components/Icons';
+import { CalendarIcon, ShieldIcon } from '../components/Icons';
 import { colors } from '../theme/colors';
+import { normalizeSriLankanMobile, toLocalSriLankanMobile } from '../utils/phone';
+import { BirthDatePicker } from '../components/BirthDatePicker';
+import { birthDateToString, formatBirthDateInput, getBirthDateError, latestBirthDate, parseBirthDate } from '../utils/birthDate';
 
 interface CreateAccountStep1ScreenProps {
   onBack: () => void;
   onContinue: (data: {
     fullName: string;
+    email: string;
     phone: string;
-    countryCode: string;
     dob: string;
     nic: string;
   }) => void;
   onSignIn: () => void;
   initialData?: {
     fullName?: string;
+    email?: string;
     phone?: string;
-    countryCode?: string;
     dob?: string;
     nic?: string;
   };
@@ -42,16 +46,37 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
   initialData,
 }) => {
   const [fullName, setFullName] = useState(initialData?.fullName || '');
-  const [countryCode, setCountryCode] = useState(initialData?.countryCode || '+94');
-  const [phone, setPhone] = useState(initialData?.phone || '');
+  const [email, setEmail] = useState(initialData?.email || '');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [phone, setPhone] = useState(toLocalSriLankanMobile(initialData?.phone || ''));
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [dob, setDob] = useState(initialData?.dob || '');
+  const [dobError, setDobError] = useState<string | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [nic, setNic] = useState(initialData?.nic || '');
+  const maximumBirthDate = latestBirthDate();
+  const pickerDate = getBirthDateError(dob) ? null : parseBirthDate(dob);
 
   const handleContinue = () => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!/^[a-z0-9._%+-]+@[a-z0-9-]+(?:\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(cleanEmail)) {
+      setEmailError('Enter a valid email address.');
+      return;
+    }
+    setEmailError(null);
+    const normalizedPhone = normalizeSriLankanMobile(phone);
+    if (!normalizedPhone) {
+      setPhoneError('Enter a valid Sri Lankan mobile number, e.g. 077 123 4567.');
+      return;
+    }
+    setPhoneError(null);
+    const dateError = getBirthDateError(dob);
+    setDobError(dateError);
+    if (dateError) return;
     onContinue({
       fullName: fullName.trim(),
-      phone: phone.trim(),
-      countryCode,
+      email: cleanEmail,
+      phone: toLocalSriLankanMobile(normalizedPhone),
       dob: dob.trim(),
       nic: nic.trim(),
     });
@@ -70,6 +95,7 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
           {/* Title & subtitle */}
           <Text style={styles.title}>Personal Details</Text>
@@ -95,43 +121,87 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
               />
             </View>
 
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Email Address</Text>
+              <TextInput
+                style={[styles.input, emailError && styles.phoneRowError]}
+                placeholder="you@example.com"
+                placeholderTextColor="#94A3B8"
+                value={email}
+                onChangeText={(value) => {
+                  setEmail(value);
+                  setEmailError(null);
+                }}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                accessibilityLabel="Email address"
+              />
+              {emailError && <Text style={styles.phoneError} accessibilityRole="alert">{emailError}</Text>}
+            </View>
+
             {/* Phone Number */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Phone Number</Text>
-              <View style={styles.phoneRow}>
-                <TouchableOpacity
-                  style={styles.countryPicker}
-                  activeOpacity={0.8}
-                  onPress={() => setCountryCode(countryCode === '+94' ? '+1' : '+94')}
-                >
-                  <Text style={styles.countryCodeText}>{countryCode}</Text>
-                  <ChevronDownIcon size={12} color="#64748B" />
-                </TouchableOpacity>
+              <Text style={styles.label}>Mobile Number</Text>
+              <View style={[styles.phoneRow, phoneError && styles.phoneRowError]}>
+                <View style={styles.countryBadge}>
+                  <Text style={styles.countryBadgeText}>LK</Text>
+                </View>
 
                 <TextInput
-                  style={[styles.input, styles.phoneInput]}
-                  placeholder="77 123 4567"
+                  style={styles.phoneInput}
+                  placeholder="077 123 4567"
                   placeholderTextColor="#94A3B8"
                   keyboardType="phone-pad"
                   value={phone}
-                  onChangeText={setPhone}
+                  onChangeText={(value) => {
+                    setPhone(value);
+                    setPhoneError(null);
+                  }}
+                  onBlur={() => setPhone(toLocalSriLankanMobile(phone))}
+                  autoComplete="tel"
+                  autoCorrect={false}
+                  accessibilityLabel="Sri Lankan mobile number"
                 />
               </View>
+              {phoneError && <Text style={styles.phoneError} accessibilityRole="alert">{phoneError}</Text>}
             </View>
 
             {/* Date of Birth */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Date of Birth</Text>
-              <View style={styles.iconInputRow}>
+              <View style={[styles.iconInputRow, dobError && styles.phoneRowError]}>
                 <TextInput
                   style={styles.iconInputText}
                   placeholder="YYYY-MM-DD"
                   placeholderTextColor="#94A3B8"
                   value={dob}
-                  onChangeText={setDob}
+                  onChangeText={(value) => {
+                    setDob(formatBirthDateInput(value));
+                    setDobError(null);
+                  }}
+                  onBlur={() => setDobError(getBirthDateError(dob))}
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  autoCorrect={false}
+                  accessibilityLabel="Date of birth, year month day"
+                  accessibilityHint="Enter 8 digits; separators are added automatically."
                 />
-                <CalendarIcon size={18} color="#64748B" />
+                <TouchableOpacity
+                  style={styles.calendarButton}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setShowDatePicker(true);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Choose date of birth"
+                  activeOpacity={0.7}
+                >
+                  <CalendarIcon size={18} color={colors.primary} />
+                </TouchableOpacity>
               </View>
+              {dobError && <Text style={styles.phoneError} accessibilityRole="alert">{dobError}</Text>}
             </View>
 
             {/* NIC Number */}
@@ -180,6 +250,19 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
           </Text>
         </TouchableOpacity>
       </View>
+      {showDatePicker && (
+        <BirthDatePicker
+          value={pickerDate || maximumBirthDate}
+          maximumDate={maximumBirthDate}
+          onCancel={() => setShowDatePicker(false)}
+          onConfirm={(date) => {
+            const selected = birthDateToString(date);
+            setDob(selected);
+            setDobError(getBirthDateError(selected));
+            setShowDatePicker(false);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -234,33 +317,52 @@ const styles = StyleSheet.create({
   },
   phoneRow: {
     flexDirection: 'row',
-    gap: 8,
-  },
-  countryPicker: {
+    alignItems: 'center',
     height: 48,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
-    paddingHorizontal: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    paddingHorizontal: 10,
     backgroundColor: '#FFFFFF',
   },
-  countryCodeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
+  countryBadge: {
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  countryBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
   },
   phoneInput: {
     flex: 1,
+    minWidth: 0,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  phoneHint: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textSecondary,
+  },
+  phoneRowError: {
+    borderColor: colors.primary,
+  },
+  phoneError: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.primary,
   },
   iconInputRow: {
     height: 48,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
-    paddingHorizontal: 14,
+    paddingLeft: 14,
+    paddingRight: 6,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -268,12 +370,20 @@ const styles = StyleSheet.create({
   },
   iconInputText: {
     flex: 1,
+    minWidth: 0,
     height: '100%',
     fontSize: 14,
     color: '#0F172A',
     paddingHorizontal: 0,
     paddingVertical: 0,
     backgroundColor: 'transparent',
+  },
+  calendarButton: {
+    width: 44,
+    height: 44,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   privacyCard: {
     backgroundColor: '#F0F4FF',

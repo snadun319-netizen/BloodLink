@@ -6,8 +6,8 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScreenName } from '../types/navigation';
 import { colors } from '../theme/colors';
 
@@ -54,6 +54,8 @@ export const DevScreenPicker: React.FC<DevScreenPickerProps> = ({
           style={styles.pillButton}
           activeOpacity={0.85}
           onPress={() => setModalVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Open development screen navigator"
         >
           <View style={styles.badgeIndicator} />
           <Text style={styles.pillText} numberOfLines={1}>
@@ -99,6 +101,8 @@ export const DevScreenPicker: React.FC<DevScreenPickerProps> = ({
                           isSelected && styles.screenItemSelected,
                         ]}
                         activeOpacity={0.7}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
                         onPress={() => {
                           onSelectScreen(item.id);
                           setModalVisible(false);

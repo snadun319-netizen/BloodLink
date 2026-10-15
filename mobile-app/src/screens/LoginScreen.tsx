@@ -5,12 +5,12 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowLeftIcon,
   EyeIcon,
@@ -19,6 +19,7 @@ import {
 } from '../components/Icons';
 import { SecurityBadge } from '../components/SecurityBadge';
 import { colors } from '../theme/colors';
+import { normalizeSriLankanMobile, toLocalSriLankanMobile } from '../utils/phone';
 
 import { useAuth } from '../context/AuthContext';
 
@@ -41,6 +42,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [focusedField, setFocusedField] = useState<'phone' | 'email' | 'password' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -62,9 +64,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         }
         await signInWithEmail(cleanEmail, password);
       } else {
-        const cleanPhone = phone.trim();
+        const cleanPhone = normalizeSriLankanMobile(phone);
         if (!cleanPhone) {
-          setErrorMessage('Please enter your phone number');
+          setErrorMessage('Enter a valid Sri Lankan mobile number, e.g. 077 123 4567.');
           setIsLoading(false);
           return;
         }
@@ -79,15 +81,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#C5162E" />
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
 
       {/* Crimson Header */}
-      <View style={styles.header}>
+      <SafeAreaView style={styles.header} edges={['top']}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={onBack}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Back to welcome"
         >
           <ArrowLeftIcon size={20} color="#FFFFFF" />
         </TouchableOpacity>
@@ -96,7 +100,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         <Text style={styles.headerSubtitle}>
           Sign in to your BloodLink account
         </Text>
-      </View>
+      </SafeAreaView>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -106,6 +110,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
           {/* Sign In Method Selector */}
           <View style={styles.methodRow}>
@@ -146,30 +152,42 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           {/* Primary Input (Phone or Email) */}
           {method === 'phone' ? (
             <View style={styles.inputContainer}>
-              <View style={styles.phoneInputRow}>
+              <View style={[styles.phoneInputRow, focusedField === 'phone' && styles.inputFocused]}>
                 <View style={styles.countryPill}>
                   <Text style={styles.countryPillText}>LK</Text>
                 </View>
                 <TextInput
                   style={styles.phoneInput}
-                  placeholder="+94 77 123 4567"
+                  placeholder="077 123 4567"
                   placeholderTextColor="#94A3B8"
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
+                  autoComplete="tel"
+                  autoCorrect={false}
+                  accessibilityLabel="Sri Lankan mobile number"
+                  onFocus={() => setFocusedField('phone')}
+                  onBlur={() => {
+                    setFocusedField(null);
+                    setPhone(toLocalSriLankanMobile(phone));
+                  }}
                 />
               </View>
             </View>
           ) : (
             <View style={styles.inputContainer}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, focusedField === 'email' && styles.inputFocused]}
                 placeholder="you@email.com"
                 placeholderTextColor="#94A3B8"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                autoCorrect={false}
+                accessibilityLabel="Email address"
+                onFocus={() => setFocusedField('email')}
+                onBlur={() => setFocusedField(null)}
               />
             </View>
           )}
@@ -177,7 +195,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
           {/* Password Input */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Password</Text>
-            <View style={styles.passwordRow}>
+            <View style={[styles.passwordRow, focusedField === 'password' && styles.inputFocused]}>
               <TextInput
                 style={styles.passwordInput}
                 placeholder="Password"
@@ -185,10 +203,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 secureTextEntry={!showPassword}
                 value={password}
                 onChangeText={setPassword}
+                accessibilityLabel="Password"
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
               />
               <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={styles.passwordToggle}
+                onPress={() => setShowPassword((visible) => !visible)}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
                   <EyeOffIcon size={20} color="#94A3B8" />
@@ -266,7 +289,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   header: {
-    backgroundColor: '#C5162E',
+    backgroundColor: colors.primary,
     paddingTop: 12,
     paddingBottom: 28,
     paddingHorizontal: 24,
@@ -274,11 +297,13 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 28,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
-    marginBottom: 16,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    marginBottom: 8,
   },
   headerTitle: {
     fontSize: 26,
@@ -337,6 +362,10 @@ const styles = StyleSheet.create({
   inputContainer: {
     marginBottom: 16,
   },
+  inputFocused: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryMuted,
+  },
   label: {
     fontSize: 13,
     fontWeight: '700',
@@ -377,23 +406,41 @@ const styles = StyleSheet.create({
   },
   phoneInput: {
     flex: 1,
+    minWidth: 0,
     fontSize: 14,
     color: '#0F172A',
+  },
+  phoneHint: {
+    marginTop: 6,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.textSecondary,
   },
   passwordRow: {
     height: 48,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 12,
-    paddingHorizontal: 14,
+    paddingLeft: 14,
+    paddingRight: 10,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
   },
   passwordInput: {
     flex: 1,
+    minWidth: 0,
+    backgroundColor: 'transparent',
     fontSize: 14,
     color: '#0F172A',
+  },
+  passwordToggle: {
+    width: 44,
+    height: 44,
+    flexShrink: 0,
+    marginLeft: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   forgotPasswordWrap: {
     alignSelf: 'flex-end',

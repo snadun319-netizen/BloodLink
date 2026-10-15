@@ -5,17 +5,18 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
 import { StepIndicator } from '../components/StepIndicator';
 import { UploadIcon } from '../components/Icons';
 import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { RegistrationData } from '../types/navigation';
+import { normalizeSriLankanMobile } from '../utils/phone';
 
 interface CreateAccountStep4ScreenProps {
   onBack: () => void;
@@ -60,13 +61,14 @@ export const CreateAccountStep4Screen: React.FC<CreateAccountStep4ScreenProps> =
       return;
     }
 
+    const formattedPhone = normalizeSriLankanMobile(registrationData.phone);
+    if (!formattedPhone) {
+      setErrorMessage('Go back to Personal Details and enter a valid Sri Lankan mobile number.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const rawPhone = registrationData.phone;
-      const cleanDigits = rawPhone.replace(/[^0-9]/g, '');
-      const strippedPhone = cleanDigits.startsWith('0') ? cleanDigits.slice(1) : cleanDigits;
-      const formattedPhone = rawPhone.startsWith('+') ? rawPhone.replace(/\s+/g, '') : `${registrationData.countryCode || '+94'}${strippedPhone}`;
-
       await register({
         fullName: registrationData.fullName,
         email: cleanEmail,

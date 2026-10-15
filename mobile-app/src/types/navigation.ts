@@ -17,12 +17,13 @@ export type ScreenName =
 export interface RegistrationData {
   fullName: string;
   phone: string;
-  countryCode: string;
   dob: string;
   nic: string;
   bloodGroup: string;
   otp: string;
   email?: string;
   registrationToken?: string;
+  registrationOtpSentAt?: number;
+  registrationVerifiedAt?: number;
   documentName?: string;
 }
