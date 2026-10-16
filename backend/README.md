@@ -83,4 +83,24 @@ their actual external environments.
 existing passwords and never logs credentials. `SEED_DEMO_DATA=true` works only with
 `NODE_ENV=development` and creates demo accounts with random unknown passwords.
 
-See [the security review](../docs/BACKEND_SECURITY_REVIEW.md) and [migration notes](../database/README.md).
+Network administration (existing `admin` role) adds the following protected endpoints:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/admin/network-overview` | Blood-bank counts and stock totals for approved, active banks |
+| GET / POST | `/api/admin/organizations` | Full institution directory / create a pending institution |
+| GET / PATCH | `/api/admin/organizations/:id` | Bank-specific stock, staff and active requests / edit institution details |
+| PATCH | `/api/admin/organizations/:id/access` | `{ "isActive": false }` suspends institution access and revokes staff sessions; `true` reactivates access |
+| GET / POST | `/api/admin/staff` | Staff directory / provision an active account at an approved, active institution |
+
+Create/edit fields are `name`, `type` (create only: `bloodbank` or `hospital`),
+`district`, `address`, `contactPhone`, `contactEmail`, `latitude`, `longitude`,
+and `registrationEvidenceUrl`. Only name/type are required on creation. PATCH replaces
+the editable detail fields; send the complete form. Coordinates must be supplied together.
+Staff provisioning accepts `email`, `password`, `role`, `organizationId` and enforces
+the existing password rules and institution/role match. It does not send invitations.
+The existing approval, donor-review, user-status and audit endpoints remain available.
+Apply migration 003 before running the updated server.
+
+See [the admin requirements](../docs/SUPER_ADMIN_DASHBOARD.md),
+[the security review](../docs/BACKEND_SECURITY_REVIEW.md) and [migration notes](../database/README.md).
