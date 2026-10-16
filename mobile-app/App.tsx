@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DonorTab } from './src/components/DonorBottomNav';
 
+
 // Screen imports
 import { SplashScreen } from './src/screens/SplashScreen';
 import { WelcomeSelectionScreen } from './src/screens/WelcomeSelectionScreen';
@@ -21,9 +22,8 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { DevScreenPicker } from './src/components/DevScreenPicker';
 import { ScreenName, RegistrationData } from './src/types/navigation';
 import ProfileFlow from './src/profile/ProfileFlow';
-
-
 import { AuthProvider } from './src/context/AuthContext';
+import HistoryFlow from './src/history/HistoryFlow';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('Splash');
@@ -222,6 +222,9 @@ export default function App() {
             onSignOut={() => { setHomeTab('Home'); setCurrentScreen('Welcome'); }}
           />
         );
+
+      case 'History':
+        return <HistoryFlow />;
 
       default:
         return (
