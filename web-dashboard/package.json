@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc -b --pretty false",
     "lint": "oxlint",
-    "test": "echo \"No tests specified yet\"",
+    "test": "node --test tests/api.test.mjs",
+    "test:browser": "node tests/dashboard-browser.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
