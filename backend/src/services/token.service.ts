@@ -13,8 +13,8 @@ export async function issueTokenPair(payload: TokenPayload, familyId?: string, c
   const user = (await client.query("SELECT id, role, organization_id, status, token_version FROM users WHERE id = $1 FOR UPDATE", [payload.id])).rows[0];
   if (!user || user.status !== "active") throw new HttpError(403, "Account is not active");
   if (["hospital_staff", "bloodbank_staff"].includes(user.role)) {
-    const organization = (await client.query("SELECT type, verification_status FROM organizations WHERE id = $1", [user.organization_id])).rows[0];
-    if (!organization || organization.verification_status !== "approved" || organization.type !== (user.role === "hospital_staff" ? "hospital" : "bloodbank")) throw new HttpError(403, "Staff organization is not approved for this role");
+    const organization = (await client.query("SELECT type, verification_status, is_active FROM organizations WHERE id = $1", [user.organization_id])).rows[0];
+    if (!organization || !organization.is_active || organization.verification_status !== "approved" || organization.type !== (user.role === "hospital_staff" ? "hospital" : "bloodbank")) throw new HttpError(403, "Staff organization is not approved for this role");
   }
   const family = familyId || crypto.randomBytes(32).toString("hex");
   const current: TokenPayload = { id: String(user.id), role: user.role, orgId: user.organization_id ? String(user.organization_id) : null, tokenVersion: user.token_version, sid: family };
@@ -35,8 +35,8 @@ export async function rotateRefreshToken(token: string): Promise<{ accessToken: 
     const user = (await client.query("SELECT id, role, organization_id, status, token_version FROM users WHERE id = $1 FOR UPDATE", [payload.id])).rows[0];
     if (!user || user.status !== "active" || user.token_version !== payload.tokenVersion) return null;
     if (["hospital_staff", "bloodbank_staff"].includes(user.role)) {
-      const organization = (await client.query("SELECT type, verification_status FROM organizations WHERE id = $1", [user.organization_id])).rows[0];
-      if (!organization || organization.verification_status !== "approved" || organization.type !== (user.role === "hospital_staff" ? "hospital" : "bloodbank")) {
+      const organization = (await client.query("SELECT type, verification_status, is_active FROM organizations WHERE id = $1", [user.organization_id])).rows[0];
+      if (!organization || !organization.is_active || organization.verification_status !== "approved" || organization.type !== (user.role === "hospital_staff" ? "hospital" : "bloodbank")) {
         await revokeAllUserTokens(user.id, client);
         return null;
       }

@@ -150,3 +150,30 @@ export const validateAdminQuery = validate(req => {
   if (action !== undefined) text(action, "action", 100);
   if (limit !== undefined && positiveId(limit) > 100) throw new HttpError(400, "Limit must be between 1 and 100");
 });
+
+export const DISTRICTS = ["Ampara", "Anuradhapura", "Badulla", "Batticaloa", "Colombo", "Galle", "Gampaha", "Hambantota", "Jaffna", "Kalutara", "Kandy", "Kegalle", "Kilinochchi", "Kurunegala", "Mannar", "Matale", "Matara", "Monaragala", "Mullaitivu", "Nuwara Eliya", "Polonnaruwa", "Puttalam", "Ratnapura", "Trincomalee", "Vavuniya"];
+export const validateNetworkOrganization = validate(req => {
+  req.body.name = text(req.body.name, "institution name");
+  if (req.method === "POST" && !["hospital", "bloodbank"].includes(req.body.type)) throw new HttpError(400, "Invalid institution type");
+  for (const [key, max] of [["district", 50], ["address", 2000]] as const) {
+    req.body[key] = req.body[key] == null || req.body[key] === "" ? null : text(req.body[key], key, max);
+  }
+  if (req.body.district && !DISTRICTS.includes(req.body.district)) throw new HttpError(400, "Invalid district");
+  req.body.contactPhone = req.body.contactPhone ? phoneValue(req.body.contactPhone) : null;
+  req.body.contactEmail = req.body.contactEmail ? emailValue(req.body.contactEmail) : null;
+  req.body.registrationEvidenceUrl = req.body.registrationEvidenceUrl ? documentValue(req.body.registrationEvidenceUrl) : null;
+  for (const [key, limit] of [["latitude", 90], ["longitude", 180]] as const) {
+    const value = req.body[key];
+    if (value == null || value === "") req.body[key] = null;
+    else {
+      if (!["string", "number"].includes(typeof value) || (typeof value === "string" && !value.trim())) throw new HttpError(400, "Invalid " + key);
+      const coordinate = Number(value);
+      if (!Number.isFinite(coordinate) || Math.abs(coordinate) > limit) throw new HttpError(400, "Invalid " + key);
+      req.body[key] = coordinate;
+    }
+  }
+  if ((req.body.latitude === null) !== (req.body.longitude === null)) throw new HttpError(400, "Provide both latitude and longitude");
+});
+export const validateOrganizationAccess = validate(req => {
+  if (typeof req.body.isActive !== "boolean") throw new HttpError(400, "isActive must be a boolean");
+});

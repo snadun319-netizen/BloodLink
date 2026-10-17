@@ -13,6 +13,11 @@ lock, applies all pending SQL files in one transaction, and records file checksu
 a durable reset-email queue, normalized identity indexes, a single pending donor review
 per donor, coordinate/counter constraints, and timezone-aware timestamps.
 
+`migration_003_admin_network.sql` adds institution district, contact email and an
+`is_active` access switch for network administration. Existing institutions keep
+access enabled; contact/location metadata is optional. Suspending an approved
+institution is separate from rejecting its registration and revokes staff sessions.
+
 The upgrade intentionally logs out pre-upgrade sessions, invalidates old registration
 codes and insecure reset grants, and normalizes emails, NICs, and Sri Lankan phone formats.
 It preserves users, password hashes, profiles, verification documents, and audit history.
