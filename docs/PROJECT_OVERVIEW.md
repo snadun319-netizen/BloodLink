@@ -103,6 +103,10 @@ BloodLink adopts a **Centralized Client-Server Architecture** composed of five p
 * **FR-M6**: Record donor response (`Accepted`, `Declined`, `No Response`).
 
 ### 4.4 Administration & Governance
+
+The implemented super admin portal and its finalized scope, access boundaries and
+acceptance criteria are documented in [Super Admin Dashboard](SUPER_ADMIN_DASHBOARD.md).
+
 * **FR-A1**: Administrative verification and approval of registered hospitals and blood banks.
 * **FR-A2**: Document verification workflow for donor blood group submissions.
 * **FR-A3**: User account management and Role-Based Access Control (RBAC).

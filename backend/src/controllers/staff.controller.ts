@@ -20,7 +20,7 @@ export async function registerStaff(req: AuthRequest, res: Response, next: NextF
 
   try {
     const org = await pool.query(
-      `SELECT id, type, verification_status FROM organizations WHERE id = $1`,
+      `SELECT id, type, verification_status, is_active FROM organizations WHERE id = $1`,
       [organizationId],
     );
 
@@ -28,7 +28,7 @@ export async function registerStaff(req: AuthRequest, res: Response, next: NextF
       return res.status(404).json({ error: "Organization not found" });
     }
 
-    if (org.rows[0].verification_status !== "approved") {
+    if (org.rows[0].verification_status !== "approved" || !org.rows[0].is_active) {
       return res
         .status(403)
         .json({ error: "Organization is not yet approved" });
@@ -86,7 +86,7 @@ export async function approveStaff(req: AuthRequest, res: Response, next: NextFu
       `UPDATE users
        SET status = 'active'
        WHERE id = $1 AND status = 'suspended' AND role IN ('hospital_staff', 'bloodbank_staff')
-         AND EXISTS (SELECT 1 FROM organizations o WHERE o.id = users.organization_id AND o.verification_status = 'approved'
+         AND EXISTS (SELECT 1 FROM organizations o WHERE o.id = users.organization_id AND o.verification_status = 'approved' AND o.is_active
            AND o.type = CASE users.role WHEN 'hospital_staff' THEN 'hospital' ELSE 'bloodbank' END)
        RETURNING id, email, role, status`,
       [id],

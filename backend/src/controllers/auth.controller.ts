@@ -68,8 +68,8 @@ export async function login(req: Request, res: Response) {
     }
     if (user.status !== "active") return { status: 403, error: "Account is pending verification or suspended" };
     if (["hospital_staff", "bloodbank_staff"].includes(user.role)) {
-      const org = (await client.query("SELECT verification_status, type FROM organizations WHERE id = $1", [user.organization_id])).rows[0];
-      if (!org || org.verification_status !== "approved" || (user.role === "hospital_staff" ? org.type !== "hospital" : org.type !== "bloodbank")) {
+      const org = (await client.query("SELECT verification_status, type, is_active FROM organizations WHERE id = $1", [user.organization_id])).rows[0];
+      if (!org || !org.is_active || org.verification_status !== "approved" || (user.role === "hospital_staff" ? org.type !== "hospital" : org.type !== "bloodbank")) {
         return { status: 403, error: "Organization is not approved for this staff account" };
       }
     }
