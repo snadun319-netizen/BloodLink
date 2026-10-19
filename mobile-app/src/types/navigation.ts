@@ -14,7 +14,8 @@ export type ScreenName =
   | 'Profile'
   | 'Home'
   | 'History'
-  | 'Requests';
+  | 'Requests'
+  | 'Notifications';
 
 export interface RegistrationData {
   fullName: string;

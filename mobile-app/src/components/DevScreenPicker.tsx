@@ -36,6 +36,7 @@ const SCREENS: { id: ScreenName; label: string; category: string }[] = [
   { id: 'Requests', label: '14. Blood Requests (New Alerts & Active Mission)', category: 'Donor App Dashboard' },
   { id: 'Profile', label: '15. Donor Profile (Profile Management)', category: 'Donor Profile' },
   { id: 'History', label: '16. Donation History', category: 'Donor History' },
+  { id: 'Notifications', label: '17. Notifications', category: 'Notifications' },
 ];
 
 export const DevScreenPicker: React.FC<DevScreenPickerProps> = ({

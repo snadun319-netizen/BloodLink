@@ -25,6 +25,7 @@ import ProfileFlow from './src/profile/ProfileFlow';
 import { AuthProvider } from './src/context/AuthContext';
 import HistoryFlow from './src/history/HistoryFlow';
 import RequestsFlow from './src/requests/RequestsFlow';
+import NotificationsFlow from './src/notifications/NotificationsFlow';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('Splash');
@@ -249,6 +250,9 @@ export default function App() {
 
       case 'History':
         return <HistoryFlow />;
+
+      case 'Notifications':
+        return <NotificationsFlow onBack={() => setCurrentScreen('Home')} />;
 
       default:
         return (
