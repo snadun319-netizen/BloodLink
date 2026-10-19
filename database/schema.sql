@@ -16,6 +16,8 @@ CREATE TABLE organizations (
   contact_phone VARCHAR(20),
   district VARCHAR(50),
   contact_email VARCHAR(255),
+  branch_name VARCHAR(100),
+  parent_organization_id INTEGER REFERENCES organizations(id) ON DELETE RESTRICT,
   is_active BOOLEAN NOT NULL DEFAULT true,
   latitude NUMERIC(10, 7),
   longitude NUMERIC(10, 7),
@@ -35,6 +37,8 @@ CREATE TABLE users (
   role VARCHAR(20) NOT NULL CHECK (role IN ('donor', 'hospital_staff', 'bloodbank_staff', 'admin')),
   organization_id INTEGER REFERENCES organizations(id) ON DELETE SET NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended')),
+  is_bank_account BOOLEAN NOT NULL DEFAULT false,
+  must_change_password BOOLEAN NOT NULL DEFAULT false,
   failed_login_attempts INTEGER NOT NULL DEFAULT 0,
   locked_until TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -291,3 +295,8 @@ WHERE dp.user_id = latest.donor_id AND latest.status = 'approved';
 -- Invalidate insecure grants and sessions from the previous implementation.
 UPDATE password_reset_tokens SET used_at = NOW() WHERE used_at IS NULL AND reset_token_hash IS NULL;
 UPDATE refresh_tokens SET is_revoked = true;
+
+ALTER TABLE organizations ADD CONSTRAINT organizations_not_own_parent CHECK (parent_organization_id IS NULL OR parent_organization_id <> id);
+ALTER TABLE users ADD CONSTRAINT users_bank_account_role CHECK (NOT is_bank_account OR role = 'bloodbank_staff');
+CREATE UNIQUE INDEX users_one_bank_account ON users(organization_id) WHERE is_bank_account;
+CREATE INDEX organizations_parent ON organizations(parent_organization_id);
