@@ -4,7 +4,7 @@
   "main": "index.ts",
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
-    "expo": "~57.0.16",
+    "expo": "~57.0.30",
     "expo-constants": "~57.0.21",
     "expo-document-picker": "~57.0.3",
     "expo-font": "~57.0.4",
@@ -30,7 +30,8 @@
     "test": "echo \"No tests specified yet\"",
     "test:phone": "node --test tests/phone.test.cjs",
     "test:birth-date": "node --test tests/birth-date.test.cjs",
-    "test:registration": "node --test tests/registration.test.cjs"
+    "test:registration": "node --test tests/registration.test.cjs",
+    "test:requests": "node --test tests/requests.test.cjs"
   },
   "private": true
 }

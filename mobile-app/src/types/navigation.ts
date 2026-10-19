@@ -13,7 +13,8 @@ export type ScreenName =
   | 'ResetPasswordStep3'
   | 'Profile'
   | 'Home'
-  | 'History';
+  | 'History'
+  | 'Requests';
 
 export interface RegistrationData {
   fullName: string;
