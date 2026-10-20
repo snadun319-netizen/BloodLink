@@ -10,6 +10,7 @@ import {
   forgotPassword,
   verifyResetOtp,
   resetPassword,
+  changePassword,
 } from "../controllers/auth.controller";
 import { authenticate } from "../middleware/auth.middleware";
 import {
@@ -20,6 +21,7 @@ import {
   validateResetPasswordInput,
   validateSendOtpInput,
   validateTokenInput,
+  validateChangePassword,
 } from "../middleware/validation.middleware";
 import {
   loginLimiter,
@@ -36,6 +38,7 @@ router.post("/register", registerLimiter, validateRegistrationInput, register);
 
 // ─── Login ──────────────────────────────────────────────────────────────────
 router.post("/login", loginLimiter, validateLoginInput, login);
+router.post("/change-password", loginLimiter, authenticate, validateChangePassword, changePassword);
 
 // ─── Token Management ───────────────────────────────────────────────────────
 router.post("/refresh", validateTokenInput, refresh);

@@ -37,6 +37,7 @@ export async function registerStaff(req: AuthRequest, res: Response, next: NextF
     if (org.rows[0].type !== (role === "hospital_staff" ? "hospital" : "bloodbank")) {
       return res.status(400).json({ error: "Staff role does not match organization type" });
     }
+    if (role === "bloodbank_staff") return res.status(403).json({ error: "Blood bank accounts are provided by a platform administrator" });
 
     const existing = await pool.query("SELECT id FROM users WHERE email = $1", [
       email,

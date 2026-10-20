@@ -49,8 +49,8 @@ export async function updateUserStatus(req: AuthRequest, res: Response, next: Ne
 
   try {
     const result = await transaction(async client => {
-      const user = (await client.query("SELECT role, organization_id FROM users WHERE id = $1 FOR UPDATE", [id])).rows[0];
-      if (status === "active" && user && ["hospital_staff", "bloodbank_staff"].includes(user.role)) {
+      const user = (await client.query("SELECT role, organization_id, is_bank_account FROM users WHERE id = $1 FOR UPDATE", [id])).rows[0];
+      if (status === "active" && user && ["hospital_staff", "bloodbank_staff"].includes(user.role) && !(user.is_bank_account && user.organization_id === null)) {
         const org = (await client.query("SELECT type, verification_status, is_active FROM organizations WHERE id = $1", [user.organization_id])).rows[0];
         if (!org || !org.is_active || org.verification_status !== "approved" || org.type !== (user.role === "hospital_staff" ? "hospital" : "bloodbank")) throw new HttpError(403, "Staff organization is not approved for this role");
       }

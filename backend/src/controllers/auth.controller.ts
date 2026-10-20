@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { pool } from "../db";
 import { transaction, HttpError } from "../transaction";
 import { hashPassword, verifyPassword, verifyUnknownPassword } from "../services/password.service";
-import { issueTokenPair, rotateRefreshToken, revokeRefreshToken } from "../services/token.service";
+import { issueTokenPair, rotateRefreshToken, revokeRefreshToken, revokeAllUserTokens } from "../services/token.service";
 import { createRegistrationOtp, verifyRegistrationOtp, consumeRegistrationProof, verifyPasswordResetOtp, completePasswordReset } from "../services/otp.service";
 import { sendRegistrationOtpEmail, assertEmailConfigured } from "../services/email.service";
 import { enqueuePasswordReset } from "../services/passwordResetDelivery.service";
@@ -78,6 +78,7 @@ export async function login(req: Request, res: Response) {
     const profile = user.role === "donor" ? (await client.query("SELECT full_name, blood_group, phone FROM donor_profiles WHERE user_id = $1", [user.id])).rows[0] : null;
     return { status: 200, tokens, user: {
       id: user.id, email: user.email, role: user.role, organizationId: user.organization_id, status: user.status,
+      mustChangePassword: user.must_change_password,
       ...(profile && { fullName: profile.full_name, bloodGroup: profile.blood_group, phone: profile.phone }),
     } };
   });
@@ -87,7 +88,7 @@ export async function login(req: Request, res: Response) {
 }
 
 export async function getMe(req: AuthRequest, res: Response) {
-  const user = (await pool.query("SELECT id, email, role, organization_id, status, created_at FROM users WHERE id = $1", [req.user!.id])).rows[0];
+  const user = (await pool.query("SELECT id, email, role, organization_id, status, created_at, must_change_password FROM users WHERE id = $1", [req.user!.id])).rows[0];
   if (!user) return res.status(401).json({ error: "Session expired" });
   const profile = user.role === "donor" ? (await pool.query(
     "SELECT full_name, blood_group, phone, nic, date_of_birth, is_available, last_donation_date, next_eligible_date FROM donor_profiles WHERE user_id = $1", [user.id]
@@ -95,6 +96,7 @@ export async function getMe(req: AuthRequest, res: Response) {
   const verification = user.role === "donor" ? (await pool.query("SELECT status FROM donor_verifications WHERE donor_id = $1 ORDER BY id DESC LIMIT 1", [user.id])).rows[0] : null;
   return res.json({ user: {
     id: user.id, email: user.email, role: user.role, organizationId: user.organization_id, status: user.status, createdAt: user.created_at,
+    mustChangePassword: user.must_change_password,
     ...(profile && { fullName: profile.full_name, bloodGroup: profile.blood_group, phone: profile.phone, nic: profile.nic,
       dateOfBirth: profile.date_of_birth, isAvailable: profile.is_available, lastDonationDate: profile.last_donation_date, nextEligibleDate: profile.next_eligible_date }),
     verificationStatus: verification?.status || "not_submitted",
@@ -150,4 +152,17 @@ export async function resetPassword(req: Request, res: Response) {
   if (!userId) return res.status(400).json({ error: "Reset session has expired or is invalid. Please start over." });
   await logAudit({ actorUserId: String(userId), action: "PASSWORD_RESET_COMPLETED", targetType: "user", targetId: String(userId), ipAddress: req.ip });
   return res.json({ message: "Password reset successful. Please sign in with your new password." });
+}
+
+export async function changePassword(req: AuthRequest, res: Response) {
+  const passwordHash = await hashPassword(req.body.password);
+  await transaction(async client => {
+    const user = (await client.query("SELECT password_hash FROM users WHERE id = $1 FOR UPDATE", [req.user!.id])).rows[0];
+    if (!user || !await verifyPassword(user.password_hash, req.body.currentPassword)) throw new HttpError(400, "Current password is incorrect");
+    await client.query("UPDATE users SET password_hash = $1, must_change_password = false, failed_login_attempts = 0, locked_until = NULL, updated_at = NOW() WHERE id = $2", [passwordHash, req.user!.id]);
+    await client.query("UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL", [req.user!.id]);
+    await client.query("UPDATE password_reset_email_jobs SET status = 'cancelled', lease_until = NULL WHERE user_id = $1", [req.user!.id]);
+    await revokeAllUserTokens(Number(req.user!.id), client);
+  });
+  return res.json({ message: "Password changed. Please sign in with your new password." });
 }
