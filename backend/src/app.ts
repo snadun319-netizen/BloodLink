@@ -4,7 +4,7 @@ import helmet from "helmet";
 import { pool } from "./db";
 import authRoutes from "./routes/auth.routes";
 import organizationRoutes from "./routes/organization.routes";
-import donorVerificationRoutes from "./routes/donorVerification.routes";
+import donorRoutes from "./routes/donor.routes";
 import staffRoutes from "./routes/staff.routes";
 import adminRoutes from "./routes/admin.routes";
 import { generalLimiter } from "./middleware/rateLimiter.middleware";
@@ -27,7 +27,7 @@ export function createApp() {
   app.use(validateJsonBody);
   app.use("/api/auth", (req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); }, authRoutes);
   app.use("/api/organizations", organizationRoutes);
-  app.use("/api/donors", donorVerificationRoutes);
+  app.use("/api/donors", donorRoutes);
   app.use("/api/staff", staffRoutes);
   app.use("/api/admin", adminRoutes);
   app.get("/", (req, res) => res.json({ name: "BloodLink REST API Server", status: "online", healthCheck: "/api/health" }));
