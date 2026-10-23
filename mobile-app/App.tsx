@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DonorTab } from './src/components/DonorBottomNav';
 
+
 // Screen imports
 import { SplashScreen } from './src/screens/SplashScreen';
 import { WelcomeSelectionScreen } from './src/screens/WelcomeSelectionScreen';
@@ -21,9 +22,10 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { DevScreenPicker } from './src/components/DevScreenPicker';
 import { ScreenName, RegistrationData } from './src/types/navigation';
 import ProfileFlow from './src/profile/ProfileFlow';
-
-
 import { AuthProvider } from './src/context/AuthContext';
+import HistoryFlow from './src/history/HistoryFlow';
+import RequestsFlow from './src/requests/RequestsFlow';
+import NotificationsFlow from './src/notifications/NotificationsFlow';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('Splash');
@@ -171,11 +173,28 @@ export default function App() {
         return (
           <HomeScreen
             initialTab={homeTab}
+            onNavigateToRequests={() => setCurrentScreen('Requests')}
+            onNavigateToHistory={() => setCurrentScreen('History')}
             onNavigateToProfile={() => setCurrentScreen('Profile')}
             onLogout={() => { setHomeTab('Home'); setCurrentScreen('Login'); }}
           />
         );
-
+      //ISURI-BLOOD REQUEST PAGE
+      case 'Requests':
+        return (
+          <RequestsFlow
+            onBack={() => { setHomeTab('Home'); setCurrentScreen('Home'); }}
+            onNavigateTab={(tab) => {
+              setHomeTab(tab);
+              if (tab === 'Home') setCurrentScreen('Home');
+              else if (tab === 'Profile') setCurrentScreen('Profile');
+              else if (tab === 'History') setCurrentScreen('History');
+              else if (tab === 'Requests') setCurrentScreen('Requests');
+            }}
+            onNavigateToProfile={() => setCurrentScreen('Profile')}
+          />
+        );
+      //ISURI-END
       case 'ResetPasswordStep1':
         return (
           <ResetPasswordStep1Screen
@@ -218,10 +237,22 @@ export default function App() {
         return (
           <ProfileFlow
             onBack={() => { setHomeTab('Home'); setCurrentScreen('Home'); }}
-            onNavigateTab={(tab) => { setHomeTab(tab); setCurrentScreen('Home'); }}
+            onNavigateTab={(tab) => {
+              setHomeTab(tab);
+              if (tab === 'Home') setCurrentScreen('Home');
+              else if (tab === 'Requests') setCurrentScreen('Requests');
+              else if (tab === 'History') setCurrentScreen('History');
+              else if (tab === 'Profile') setCurrentScreen('Profile');
+            }}
             onSignOut={() => { setHomeTab('Home'); setCurrentScreen('Welcome'); }}
           />
         );
+
+      case 'History':
+        return <HistoryFlow />;
+
+      case 'Notifications':
+        return <NotificationsFlow onBack={() => setCurrentScreen('Home')} />;
 
       default:
         return (

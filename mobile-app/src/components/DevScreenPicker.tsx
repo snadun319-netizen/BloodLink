@@ -33,9 +33,10 @@ const SCREENS: { id: ScreenName; label: string; category: string }[] = [
   { id: 'ResetPasswordStep2', label: '11. Reset Password: Step 2 (OTP)', category: 'Reset Password Flow' },
   { id: 'ResetPasswordStep3', label: '12. Reset Password: Step 3 (New Password)', category: 'Reset Password Flow' },
   { id: 'Home', label: '13. Home Dashboard (Main App)', category: 'Donor App Dashboard' },
-  { id: 'Profile', label: '14. Donor Profile (Profile Management)', category: 'Donor Profile' },
-
-
+  { id: 'Requests', label: '14. Blood Requests (New Alerts & Active Mission)', category: 'Donor App Dashboard' },
+  { id: 'Profile', label: '15. Donor Profile (Profile Management)', category: 'Donor Profile' },
+  { id: 'History', label: '16. Donation History', category: 'Donor History' },
+  { id: 'Notifications', label: '17. Notifications', category: 'Notifications' },
 ];
 
 export const DevScreenPicker: React.FC<DevScreenPickerProps> = ({
