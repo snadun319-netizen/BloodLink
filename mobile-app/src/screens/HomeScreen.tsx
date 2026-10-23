@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   ScrollView,
   Modal,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import {
   Ionicons,
@@ -15,14 +17,16 @@ import {
 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DonorBottomNav, { DonorTab } from '../components/DonorBottomNav';
+import { api } from '../services/api';
 
-// TypeScript interfaces for dummy data
 export interface EmergencyMatchData {
+  requestId?: string;
   hospitalName: string;
   bloodGroup: string;
   distance: string;
   details: string;
   requiredUnits: number;
+  status?: 'available' | 'en_route';
 }
 
 export interface BloodRequestItem {
@@ -32,6 +36,7 @@ export interface BloodRequestItem {
   priority: 'Emergency' | 'Critical' | 'Urgent';
   distance: string;
   status: 'available' | 'en_route';
+  requiredUnits?: number;
 }
 
 export interface DonorProfileData {
@@ -48,59 +53,8 @@ export interface DonorProfileData {
   monthlyGain: number;
   urgentRequestsCount: number;
   matchedRequestsCount: number;
+  unreadNotificationsCount?: number;
 }
-
-// Dummy initial data
-const DUMMY_DONOR: DonorProfileData = {
-  name: 'Kavindu Perera',
-  initials: 'KP',
-  isVerified: true,
-  bloodGroup: 'O-',
-  rhGroup: 'O Rh-',
-  authorityVerified: true,
-  lastDonationDate: '15 May 2025',
-  nextEligibleStatus: 'Available Now',
-  qualificationInterval: 'Qualified · 3-Mo Gap',
-  totalDonations: 7,
-  monthlyGain: 1,
-  urgentRequestsCount: 6,
-  matchedRequestsCount: 2,
-};
-
-const DUMMY_EMERGENCY_MATCH: EmergencyMatchData = {
-  hospitalName: 'Sabaragamuwa GH',
-  bloodGroup: 'O-',
-  distance: '~7 KM AWAY',
-  details: 'Needs O- · 5 units urgently for trauma ICU',
-  requiredUnits: 5,
-};
-
-const DUMMY_REQUESTS: BloodRequestItem[] = [
-  {
-    id: 'req-1',
-    hospitalName: 'Sabaragamuwa GH',
-    bloodGroup: 'O-',
-    priority: 'Emergency',
-    distance: '~7 km',
-    status: 'available',
-  },
-  {
-    id: 'req-2',
-    hospitalName: 'Teaching Hospital Ratnapura',
-    bloodGroup: 'O-',
-    priority: 'Critical',
-    distance: '~5.7 km',
-    status: 'available',
-  },
-  {
-    id: 'req-3',
-    hospitalName: 'District Base Hospital',
-    bloodGroup: 'O-',
-    priority: 'Emergency',
-    distance: '~3.2 km',
-    status: 'en_route',
-  },
-];
 
 interface HomeScreenProps {
   initialTab?: DonorTab;
@@ -125,17 +79,83 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   const [selectedRequest, setSelectedRequest] = useState<BloodRequestItem | null>(null);
   const [responseModalVisible, setResponseModalVisible] = useState(false);
   const [emergencyModalVisible, setEmergencyModalVisible] = useState(false);
-  const [requestsList, setRequestsList] = useState<BloodRequestItem[]>(DUMMY_REQUESTS);
+
+  // Live real data state from backend
+  const [donor, setDonor] = useState<DonorProfileData | null>(null);
+  const [emergencyMatch, setEmergencyMatch] = useState<EmergencyMatchData | null>(null);
+  const [requestsList, setRequestsList] = useState<BloodRequestItem[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  // Fetch real data from backend
+  const loadDashboardData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
+    try {
+      const res = await api.authGet<{
+        donor: DonorProfileData;
+        emergencyMatch: EmergencyMatchData | null;
+        requests: BloodRequestItem[];
+      }>('/donors/home');
+
+      if (res.ok && res.data) {
+        if (res.data.donor) {
+          setDonor(res.data.donor);
+        }
+        setEmergencyMatch(res.data.emergencyMatch || null);
+        setRequestsList(res.data.requests || []);
+      }
+    } catch (err: any) {
+      console.warn('Backend loadDashboardData error:', err?.message || err);
+    } finally {
+      setIsLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  const currentDonor: DonorProfileData = donor || {
+    name: 'Valued Donor',
+    initials: 'VD',
+    isVerified: false,
+    bloodGroup: 'O-',
+    rhGroup: 'O Rh-',
+    authorityVerified: false,
+    lastDonationDate: 'None',
+    nextEligibleStatus: 'Available Now',
+    qualificationInterval: 'Qualified',
+    totalDonations: 0,
+    monthlyGain: 0,
+    urgentRequestsCount: 0,
+    matchedRequestsCount: 0,
+    unreadNotificationsCount: 0,
+  };
 
   const handleRespondToRequest = (item: BloodRequestItem) => {
     setSelectedRequest(item);
     setResponseModalVisible(true);
   };
 
-  const handleConfirmEnRoute = (requestId: string) => {
+  const handleConfirmEnRoute = async (requestId: string) => {
+    try {
+      await api.authPost(`/donors/requests/${requestId}/respond`, { status: 'en_route' });
+    } catch (err) {
+      console.warn('Failed to register response on server:', err);
+    }
+
     setRequestsList((prev) =>
       prev.map((r) => (r.id === requestId ? { ...r, status: 'en_route' } : r))
     );
+    if (emergencyMatch && emergencyMatch.requestId === requestId) {
+      setEmergencyMatch((prev) => (prev ? { ...prev, status: 'en_route' } : null));
+    }
     setResponseModalVisible(false);
     setEmergencyModalVisible(false);
     Alert.alert(
@@ -153,6 +173,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
     if (tab === 'Profile' && onNavigateToProfile) onNavigateToProfile();
   };
 
+  if (isLoading && !donor && !refreshing) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#B91C1C" />
+          <Text style={styles.loadingText}>Connecting to BloodLink network...</Text>
+        </View>
+        <DonorBottomNav activeTab={activeTab} onSelect={handleTabPress} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
@@ -162,8 +195,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <View style={styles.headerLeft}>
           <Text style={styles.welcomeSubtext}>Welcome back</Text>
           <View style={styles.userNameRow}>
-            <Text style={styles.userNameText}>{DUMMY_DONOR.name}</Text>
-            {DUMMY_DONOR.isVerified && (
+            <Text style={styles.userNameText}>{currentDonor.name}</Text>
+            {currentDonor.isVerified && (
               <View style={styles.verifiedBadgeContainer}>
                 <Ionicons name="checkmark-circle" size={20} color="#0284C7" />
               </View>
@@ -175,12 +208,12 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <TouchableOpacity
             style={styles.notificationBellBtn}
             accessibilityRole="button"
-            accessibilityLabel="Notifications, 5 unread"
+            accessibilityLabel={`Notifications, ${currentDonor.unreadNotificationsCount || 0} unread`}
             activeOpacity={0.75}
-            onPress={() => Alert.alert('Notifications', 'You have 5 unread blood requests and announcements.')}
+            onPress={() => Alert.alert('Notifications', `You have ${currentDonor.unreadNotificationsCount || 0} unread blood request notification(s).`)}
           >
             <Ionicons name="notifications-outline" size={21} color="#334155" />
-            <View style={styles.notificationDot} />
+            {(currentDonor.unreadNotificationsCount || 0) > 0 && <View style={styles.notificationDot} />}
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -190,7 +223,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             activeOpacity={0.8}
             onPress={() => handleTabPress('Profile')}
           >
-            <Text style={styles.avatarInitialsText}>{DUMMY_DONOR.initials}</Text>
+            <Text style={styles.avatarInitialsText}>{currentDonor.initials}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -200,9 +233,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => loadDashboardData(true)}
+            colors={['#B91C1C']}
+            tintColor="#B91C1C"
+          />
+        }
       >
         {/* 1. EMERGENCY MATCH ALERT CARD */}
-        {showEmergencyCard && (
+        {showEmergencyCard && emergencyMatch != null && (
           <View style={styles.emergencyCard}>
             {/* Decorative Background Circles */}
             <View style={styles.bgDecorativeCircleOne} />
@@ -214,23 +255,23 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 <View style={styles.pulsingWhiteDot} />
                 <Text style={styles.emergencyPillText}>EMERGENCY MATCH</Text>
                 <Ionicons name="location-sharp" size={11} color="#FFFFFF" style={styles.pinIcon} />
-                <Text style={styles.emergencyPillText}>{DUMMY_EMERGENCY_MATCH.distance}</Text>
+                <Text style={styles.emergencyPillText}>{emergencyMatch.distance}</Text>
               </View>
 
               <View style={styles.bloodTypeNeededBadge}>
-                <Text style={styles.bloodTypeNeededText}>{DUMMY_EMERGENCY_MATCH.bloodGroup}</Text>
+                <Text style={styles.bloodTypeNeededText}>{emergencyMatch.bloodGroup}</Text>
                 <Text style={styles.neededLabelText}>NEEDED</Text>
               </View>
             </View>
 
             {/* Hospital Name & Urgent Subtitle */}
             <Text style={styles.emergencyHospitalName}>
-              {DUMMY_EMERGENCY_MATCH.hospitalName}
+              {emergencyMatch.hospitalName}
             </Text>
             <View style={styles.emergencyDetailsRow}>
               <View style={styles.amberWarningDot} />
               <Text style={styles.emergencyDetailsText}>
-                {DUMMY_EMERGENCY_MATCH.details}
+                {emergencyMatch.details}
               </Text>
             </View>
 
@@ -242,7 +283,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 activeOpacity={0.9}
                 onPress={() => setEmergencyModalVisible(true)}
               >
-                <Text style={styles.respondNowButtonText}>Respond Now</Text>
+                <Text style={styles.respondNowButtonText}>
+                  {emergencyMatch.status === 'en_route' ? 'En Route' : 'Respond Now'}
+                </Text>
                 <Ionicons name="arrow-forward" size={16} color="#BA1328" style={styles.arrowIcon} />
               </TouchableOpacity>
 
@@ -271,7 +314,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <View style={styles.qualifiedBadge}>
               <View style={styles.greenQualifiedDot} />
               <Text style={styles.qualifiedBadgeText}>
-                {DUMMY_DONOR.qualificationInterval}
+                {currentDonor.qualificationInterval}
               </Text>
             </View>
           </View>
@@ -286,9 +329,9 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <View style={styles.donorGroupBox}>
             <View style={styles.donorBloodBadgeWrapper}>
               <View style={styles.donorBloodBadge}>
-                <Text style={styles.donorBloodBadgeText}>{DUMMY_DONOR.bloodGroup}</Text>
+                <Text style={styles.donorBloodBadgeText}>{currentDonor.bloodGroup}</Text>
               </View>
-              {DUMMY_DONOR.authorityVerified && (
+              {currentDonor.authorityVerified && (
                 <View style={styles.badgeCheckCircle}>
                   <Ionicons name="checkmark" size={10} color="#FFFFFF" />
                 </View>
@@ -299,7 +342,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <View style={styles.donorGroupNameRow}>
                 <Text style={styles.donorGroupNameText}>Universal Donor Group</Text>
                 <View style={styles.rhPillBadge}>
-                  <Text style={styles.rhPillText}>{DUMMY_DONOR.rhGroup}</Text>
+                  <Text style={styles.rhPillText}>{currentDonor.rhGroup}</Text>
                 </View>
               </View>
 
@@ -319,7 +362,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <View style={styles.dateValueRow}>
                 <View style={styles.grayDot} />
                 <Text style={styles.dateValueTextWhite}>
-                  {DUMMY_DONOR.lastDonationDate}
+                  {currentDonor.lastDonationDate}
                 </Text>
               </View>
             </View>
@@ -329,7 +372,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <View style={styles.dateValueRow}>
                 <View style={styles.brightGreenDot} />
                 <Text style={styles.nextDateValueGreen}>
-                  {DUMMY_DONOR.nextEligibleStatus}
+                  {currentDonor.nextEligibleStatus}
                 </Text>
               </View>
             </View>
@@ -350,7 +393,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </View>
 
             <View style={styles.metricRow}>
-              <Text style={styles.metricNumberLarge}>{DUMMY_DONOR.totalDonations}</Text>
+              <Text style={styles.metricNumberLarge}>{currentDonor.totalDonations}</Text>
               <Text style={styles.metricUnitsMuted}>units given</Text>
             </View>
 
@@ -359,7 +402,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             <View style={styles.statCardBottomRow}>
               <View style={styles.trendRow}>
                 <Feather name="trending-up" size={13} color="#10B981" />
-                <Text style={styles.trendText}>+{DUMMY_DONOR.monthlyGain} this mo</Text>
+                <Text style={styles.trendText}>+{currentDonor.monthlyGain} this mo</Text>
               </View>
 
               <View style={styles.carouselDotsRow}>
@@ -385,10 +428,10 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
             <View style={styles.metricRow}>
               <Text style={styles.metricNumberLarge}>
-                {DUMMY_DONOR.urgentRequestsCount}
+                {currentDonor.urgentRequestsCount}
               </Text>
               <Text style={styles.metricMatchedAmber}>
-                {DUMMY_DONOR.matchedRequestsCount} matched
+                {currentDonor.matchedRequestsCount} matched
               </Text>
             </View>
 
@@ -410,73 +453,83 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <Text style={styles.sectionTitleText}>Active Blood Requests Nearby</Text>
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => Alert.alert('Nearby Requests', 'Showing all 6 active verified blood requests within 25km radius.')}
+            onPress={() => onNavigateToRequests ? onNavigateToRequests() : Alert.alert('Nearby Requests', `Showing ${requestsList.length} active verified blood requests.`)}
           >
-            <Text style={styles.seeAllLinkText}>See all (6)</Text>
+            <Text style={styles.seeAllLinkText}>See all ({requestsList.length})</Text>
           </TouchableOpacity>
         </View>
 
         {/* REQUESTS LIST */}
         <View style={styles.requestsListContainer}>
-          {requestsList.map((item) => {
-            const isEnRoute = item.status === 'en_route';
-            const isCritical = item.priority === 'Critical';
+          {requestsList.length === 0 ? (
+            <View style={styles.emptyRequestsBox}>
+              <Ionicons name="checkmark-done-circle-outline" size={36} color="#10B981" />
+              <Text style={styles.emptyRequestsTitle}>No Active Requests Nearby</Text>
+              <Text style={styles.emptyRequestsSubtitle}>
+                All blood requirements in your area are currently fulfilled. Pull down to refresh anytime.
+              </Text>
+            </View>
+          ) : (
+            requestsList.map((item) => {
+              const isEnRoute = item.status === 'en_route';
+              const isCritical = item.priority === 'Critical';
 
-            return (
-              <View key={item.id} style={styles.requestCard}>
-                {/* Left Blood Group Badge */}
-                <View style={styles.requestBloodBadge}>
-                  <Text style={styles.requestBloodText}>{item.bloodGroup}</Text>
-                </View>
+              return (
+                <View key={item.id} style={styles.requestCard}>
+                  {/* Left Blood Group Badge */}
+                  <View style={styles.requestBloodBadge}>
+                    <Text style={styles.requestBloodText}>{item.bloodGroup}</Text>
+                  </View>
 
-                {/* Center Details */}
-                <View style={styles.requestInfoCenter}>
-                  <Text style={styles.requestHospitalTitle}>
-                    {item.hospitalName}
-                  </Text>
-                  <View style={styles.requestTagsRow}>
-                    <View
-                      style={[
-                        styles.priorityPill,
-                        isCritical ? styles.priorityPillCritical : styles.priorityPillEmergency,
-                      ]}
-                    >
-                      <Text
+                  {/* Center Details */}
+                  <View style={styles.requestInfoCenter}>
+                    <Text style={styles.requestHospitalTitle}>
+                      {item.hospitalName}
+                    </Text>
+                    <View style={styles.requestTagsRow}>
+                      <View
                         style={[
-                          styles.priorityText,
-                          isCritical ? styles.priorityTextCritical : styles.priorityTextEmergency,
+                          styles.priorityPill,
+                          isCritical ? styles.priorityPillCritical : styles.priorityPillEmergency,
                         ]}
                       >
-                        {item.priority}
-                      </Text>
+                        <Text
+                          style={[
+                            styles.priorityText,
+                            isCritical ? styles.priorityTextCritical : styles.priorityTextEmergency,
+                          ]}
+                        >
+                          {item.priority}
+                        </Text>
+                      </View>
+                      <Text style={styles.distanceMutedText}>{item.distance}</Text>
                     </View>
-                    <Text style={styles.distanceMutedText}>{item.distance}</Text>
+                  </View>
+
+                  {/* Right Action */}
+                  <View style={styles.requestActionRight}>
+                    {isEnRoute ? (
+                      <View style={styles.enRouteBadge}>
+                        <View style={styles.enRouteGreenDot} />
+                        <Text style={styles.enRouteText}>EN ROUTE</Text>
+                      </View>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.respondLinkBtn}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Respond to ${item.hospitalName}`}
+                        activeOpacity={0.7}
+                        onPress={() => handleRespondToRequest(item)}
+                      >
+                        <Text style={styles.respondLinkText}>Respond</Text>
+                        <Ionicons name="chevron-forward" size={14} color="#C5162E" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
-
-                {/* Right Action */}
-                <View style={styles.requestActionRight}>
-                  {isEnRoute ? (
-                    <View style={styles.enRouteBadge}>
-                      <View style={styles.enRouteGreenDot} />
-                      <Text style={styles.enRouteText}>EN ROUTE</Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.respondLinkBtn}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Respond to ${item.hospitalName}`}
-                      activeOpacity={0.7}
-                      onPress={() => handleRespondToRequest(item)}
-                    >
-                      <Text style={styles.respondLinkText}>Respond</Text>
-                      <Ionicons name="chevron-forward" size={14} color="#C5162E" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-            );
-          })}
+              );
+            })
+          )}
         </View>
 
       </ScrollView>
@@ -507,20 +560,20 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </View>
 
             <Text style={styles.modalHospitalTitle}>
-              {DUMMY_EMERGENCY_MATCH.hospitalName}
+              {emergencyMatch?.hospitalName}
             </Text>
             <Text style={styles.modalDescription}>
-              Trauma ICU requires 5 urgent units of O- blood. Your registered profile matches the exact criteria.
+              {emergencyMatch?.details || 'Trauma ICU requires urgent blood units. Your registered profile matches the exact criteria.'}
             </Text>
 
             <View style={styles.modalInfoBox}>
               <View style={styles.modalInfoItem}>
                 <Ionicons name="location" size={16} color="#C5162E" />
-                <Text style={styles.modalInfoText}>Distance: ~7 km away</Text>
+                <Text style={styles.modalInfoText}>Distance: {emergencyMatch?.distance || 'Nearby'}</Text>
               </View>
               <View style={styles.modalInfoItem}>
                 <Ionicons name="water" size={16} color="#C5162E" />
-                <Text style={styles.modalInfoText}>Target Group: O- (Universal Donor)</Text>
+                <Text style={styles.modalInfoText}>Target Group: {emergencyMatch?.bloodGroup} ({currentDonor.bloodGroup === 'O-' ? 'Universal Donor' : 'Matching Group'})</Text>
               </View>
               <View style={styles.modalInfoItem}>
                 <Ionicons name="shield-checkmark" size={16} color="#10B981" />
@@ -533,7 +586,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 style={styles.modalConfirmBtn}
                 accessibilityRole="button"
                 activeOpacity={0.85}
-                onPress={() => handleConfirmEnRoute('req-1')}
+                onPress={() => emergencyMatch && handleConfirmEnRoute(emergencyMatch.requestId || '1')}
               >
                 <Text style={styles.modalConfirmBtnText}>Confirm Donation &amp; Go En Route</Text>
               </TouchableOpacity>
@@ -1466,5 +1519,42 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 14,
     fontWeight: '700',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#FFFFFF',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  emptyRequestsBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginHorizontal: 18,
+    marginTop: 8,
+  },
+  emptyRequestsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+    marginTop: 10,
+  },
+  emptyRequestsSubtitle: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 18,
   },
 });
