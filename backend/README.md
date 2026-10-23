@@ -104,3 +104,17 @@ Apply migration 003 before running the updated server.
 
 See [the admin requirements](../docs/SUPER_ADMIN_DASHBOARD.md),
 [the security review](../docs/BACKEND_SECURITY_REVIEW.md) and [migration notes](../database/README.md).
+
+## Account-first blood bank onboarding
+
+Apply migrations through 005 before running the updated portal. Existing bank links, passwords and roles are preserved. Primary bank accounts can now exist with `organization_id = NULL`; login/token issuance still rejects staff without an approved, active organization.
+
+- `POST /api/admin/bank-accounts`: admin-only; `accountEmail` and strong `password`. Creates an unassigned primary login with `must_change_password = true`.
+- `GET /api/admin/bank-accounts`: includes assigned and unassigned primary accounts using a left join; ordinary teammates are excluded.
+- `POST /api/admin/blood-banks`: admin-only; bank details plus `type: "bloodbank"` and `accountId` referencing an active, unassigned primary login. Requires district, address and coordinates. Optional `branchName` and `parentOrganizationId` link a branch to a main bank. Creates the approved bank and assigns the selected login in one transaction. It does not create new credentials.
+- `POST /api/admin/blood-banks/:id/account`: admin-only; `accountId` assigns a pre-created, unused login to an existing approved, active bank without a primary account. No email/password fields are accepted for account creation here.
+- Row locks and the partial unique index prevent duplicate/concurrent account assignments. An audit or registration failure preserves the unassigned account for retry.
+- Login/current-user responses include `user.mustChangePassword`. `POST /api/auth/change-password` requires authentication, `currentPassword`, a strong `password`, and `confirmPassword`. It clears the first-use requirement and revokes sessions. Email/OTP recovery does the same.
+- Public `/api/organizations/register` rejects blood-bank registration and `/api/staff/register` rejects blood-bank staff. Hospital behavior remains.
+
+The admin UI supports copying credentials for manual handover to the bank contact. It keeps newly created credentials in memory between the two steps and clears them after final handover or session exit. No credentials are returned from database reads. The bank dashboard and teammate management will be developed separately. Audit persistence remains enabled despite removing activity-log UI.

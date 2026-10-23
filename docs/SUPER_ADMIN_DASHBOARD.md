@@ -1,48 +1,29 @@
 # Super admin dashboard requirements
 
-## Purpose and source
+The platform administrator manages institutions across BloodLink using the existing `admin` role. Blood bank operations and teammate management remain in a separate institution dashboard.
 
-The platform administrator manages the BloodLink network across institutions. An institution's doctor/coordinator continues to manage that institution's stock, blood requests and confidential health alerts in its own dashboard. This portal uses the existing `admin` role; it does not introduce a second privileged database role.
+## Current workflows
 
-Requirements derive from `PROJECT_OVERVIEW.md` sections 4.2, 4.4, 7 and 8, the existing organization/staff/donor-review APIs, and the supplied dashboard screenshots. The screenshots establish the BloodLink red, pale lavender surfaces, left navigation, summary cards and compact tables.
+- Admin email/password login, rotating refresh tokens and logout. Tokens remain in memory. No demo entry or public admin registration.
+- Mobile app logo reused in the login screen, sidebar and favicon.
+- Overview with institution counts, stock totals and a bank-account handover guide. No activity log tab, page, feed or audit-history request.
+- Register a main blood bank or branch, with name, automatic stable BloodLink code, district, address, contact details and coordinates. Branches reference a main bank; nested or cyclic branch hierarchies are rejected.
+- Select coordinates by clicking Google Maps or dragging the pin. Allow direct coordinate entry and a Google Maps link if a browser API key is unavailable. Browser Maps configuration is documented in `web-dashboard/README.md`.
+- Admin first creates an email/password account in Bank accounts, then selects it in Blood banks > Add blood bank and completes institution details. Account creation does not create a placeholder bank. Registration links the existing account to the new approved bank atomically. Each bank has one primary account and accounts cannot be reused across banks.
+- Keep new credentials in this admin session until assignment and handover, with copy support for the doctor or bank contact. Clear them after final handover or session exit. Never include plaintext passwords/hashes in backend responses, audit records, browser storage or exports.
+- Bank accounts list both unassigned and assigned primary logins, password-change requirement and access status. Unassigned accounts cannot sign in. Existing approved banks can select a pre-created account through institution details. Exclude ordinary teammates.
+- Temporary-password login exposes `mustChangePassword`. Protected APIs require a password change; authenticated change and email recovery clear the requirement and revoke old sessions. The separate bank dashboard consumes these endpoints.
+- Public blood bank and blood-bank staff registration is blocked. Existing hospital registration behavior remains.
+- Maintain search/filter/pagination/CSV export, bank editing, branch details, map links and read-only stock/team/request oversight.
+- Retain donor/legacy institution approvals and institution/account suspension. Suspending an institution revokes its staff sessions.
+- Preserve backend auditing despite removing activity-log UI.
 
-## Accepted scope
+## Validation
 
-| Area | Required behavior |
-| --- | --- |
-| Authentication | Existing email/password login, admin-only access, rotating refresh tokens, logout. Tokens remain in memory, never browser storage. Reload requires signing in again. |
-| Overview | Blood-bank count, approved/active banks, pending bank registrations, critical stock entries, aggregate units by blood group, recent bank registrations, approvals and audit activity. All operational totals derive from database records. |
-| Blood-bank directory | Search by name/address/contact, district and lifecycle filters, pagination, create bank, edit contact/location/evidence details, inspect bank-specific stock, staff and active requests. |
-| Institution lifecycle | New banks start pending. Review pending banks/hospitals, approve or reject. Suspend/reactivate approved institutions separately from verification. Suspension immediately blocks institution staff access and revokes their sessions. No destructive institution deletion. |
-| Staff accounts | Provision an active institution account with a strong initial password for an approved, active institution; show assigned institution and role; activate/suspend accounts. Existing self-registrations appear as inactive/awaiting approval because the current schema represents both with `suspended`. No role escalation or super-admin creation through the UI. |
-| Approvals | Review pending institutions and donor blood-group documents. Show document references and HTTPS evidence links; support approval and rejection, with a reason for donor rejection. Managed upload references are displayed, not treated as publicly downloadable URLs. |
-| Activity | Search recent audit entries, show actor, event, target and time in Asia/Colombo. New institution create/edit/access and staff-provisioning endpoints persist audit records in the same transaction. Approval and individual user-status changes reuse the existing audited endpoints. |
-| UX | Responsive desktop/tablet/mobile layouts, keyboard-accessible dialogs, labelled controls, loading/empty/error states, refresh/retry, confirmation before access changes, CSV export of the current directory filter. |
-| Demo | Explicit opt-in demo from login, clearly marked throughout. Synthetic in-memory data supports the same management interactions and resets on leaving demo/reload. Never silently substitute demo data for a failed live API request. |
+Frontend API tests cover email/password authentication, admin-only access, logout, refresh rotation and transient failures. Chromium checks use isolated HTTP fixtures and a Maps SDK stand-in to exercise onboarding, credential handover, map callbacks, branches, legacy account creation, access status, keyboard focus and responsive layouts.
 
-## Boundaries
+Backend integration tests use disposable PostgreSQL databases and real HTTP/crypto. Coverage includes migration upgrade/repeatability, RBAC, branch validation, duplicate-account races, atomic rollback, temporary-password restrictions, password changes, recovery and session revocation. A real Google Maps key, billing and external email delivery require their configured services.
 
-Stock and active requests are read-only oversight. Stock updates, emergency broadcasts, donor matching, health alerts and clinical decisions remain institution workflows. Do not expose confidential donor health findings, exact donor coordinates, passwords, tokens or hashes in the portal. Do not claim real-time synchronization: live data loads on entry and explicit refresh.
+## Setup
 
-District, contact email and institution access status require `migration_003_admin_network.sql`. Existing records keep access enabled; missing contact/location details appear as not provided. The new admin API paths are protected by the existing database-backed RBAC middleware.
-
-## Acceptance checks
-
-1. Donors/staff cannot call the network administration endpoints; anonymous requests fail authentication.
-2. An admin can create a pending blood bank, edit it, approve it and provision its staff account.
-3. An unapproved or suspended bank cannot receive a new staff account or authenticate/refresh existing staff sessions. Reactivation does not restore revoked sessions.
-4. Directory search, filters, pagination, export and bank details work for empty and populated data.
-5. Approval and access changes refresh affected totals and activity; errors remain visible and do not show false success.
-6. Admin login rejects non-admin accounts; concurrent API requests share one refresh operation.
-7. Backend integration tests run against disposable databases, including fresh-schema and upgrade coverage. Frontend production compilation and browser interaction checks cover the portal.
-
-## Local setup
-
-See `web-dashboard/README.md`. Run the migration explicitly before starting the updated backend. No hosted deployment or production database changes are part of this implementation.
-
-## Verified implementation
-
-- Backend production build and 172 security/integration checks passed against disposable PostgreSQL databases, including migration 003, directory aggregation, admin/staff RBAC, suspension, refresh revocation and audit-failure rollback. Seven existing mobile API client tests also passed.
-- Frontend production build and five API client tests passed, including non-admin rejection, concurrent refresh, temporary outage retry and malformed response handling.
-- Chromium checks passed for bank create/edit/approval/access, staff provisioning/access, donor rejection, filtered CSV export, audit records, modal keyboard behavior, sign-out/demo reset and all five routes at 320, 390, 768, 1024 and 1440 pixels.
-- Live browser-to-production-server deployment was not performed. Browser workflows use explicit synthetic demo records; HTTP/PostgreSQL integration is covered separately by the backend suite.
+Apply migrations through 005 before running the updated backend. Existing account credentials remain unchanged. See `web-dashboard/README.md` and `backend/README.md` for environment configuration.
