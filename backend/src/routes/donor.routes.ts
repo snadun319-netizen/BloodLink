@@ -1,4 +1,5 @@
 import { Router } from "express";
+import donorVerificationRoutes from "./donorVerification.routes";
 import {
   getDonorHomeDashboard,
   respondToBloodRequest,
@@ -9,6 +10,9 @@ import { optionalAuthenticate } from "../middleware/auth.middleware";
 import { validateRouteIds } from "../middleware/validation.middleware";
 
 const router = Router();
+
+// Donor verification routes (/submit, /admin/pending, /admin/:id/approve, etc.)
+router.use(donorVerificationRoutes);
 
 // GET /api/donors/home - Personalized dashboard data (donor profile, emergency match, active requests)
 router.get("/home", optionalAuthenticate, getDonorHomeDashboard);
