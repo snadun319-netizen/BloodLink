@@ -173,6 +173,26 @@ export const validateNetworkOrganization = validate(req => {
     }
   }
   if ((req.body.latitude === null) !== (req.body.longitude === null)) throw new HttpError(400, "Provide both latitude and longitude");
+  req.body.branchName = req.body.branchName ? text(req.body.branchName, "branch name", 100) : null;
+  req.body.parentOrganizationId = req.body.parentOrganizationId ? positiveId(req.body.parentOrganizationId) : null;
+  if (req.body.parentOrganizationId && !req.body.branchName) throw new HttpError(400, "Provide a branch name");
+});
+export const validateBankAccount = validate(req => {
+  req.body.accountEmail = emailValue(req.body.accountEmail);
+  req.body.password = passwordValue(req.body.password);
+});
+export const validateBankAccountSelection = validate(req => {
+  req.body.accountId = positiveId(req.body.accountId);
+});
+export const validateBankOnboarding = validate(req => {
+  if (req.body.type !== "bloodbank") throw new HttpError(400, "A blood bank is required");
+  if (!req.body.district || !req.body.address || req.body.latitude == null || req.body.longitude == null) throw new HttpError(400, "District, address and map location are required");
+});
+export const validateChangePassword = validate(req => {
+  if (typeof req.body.currentPassword !== "string" || !req.body.currentPassword || req.body.currentPassword.length > 128) throw new HttpError(400, "Current password is required");
+  req.body.password = passwordValue(req.body.password);
+  if (req.body.password !== req.body.confirmPassword) throw new HttpError(400, "Passwords do not match");
+  if (req.body.password === req.body.currentPassword) throw new HttpError(400, "Choose a different password");
 });
 export const validateOrganizationAccess = validate(req => {
   if (typeof req.body.isActive !== "boolean") throw new HttpError(400, "isActive must be a boolean");

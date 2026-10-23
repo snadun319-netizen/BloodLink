@@ -152,9 +152,9 @@ npm run dev
 ### 4. Running the Web Dashboard
 
 The checked-in web app is the **super admin network portal**. It manages blood banks,
-approvals, institution staff and audit activity, separately from institution clinical
-operations. Use **Open demo dashboard** on its login screen to preview without a backend.
-For live data, apply backend migrations and sign in with an active `admin` account.
+branches, approvals and primary bank login accounts, separately from institution clinical
+operations. Apply backend migrations, start the API, and sign in with an active
+`admin` email and password. There is no demo login.
 See [dashboard setup](web-dashboard/README.md) and [finalized requirements](docs/SUPER_ADMIN_DASHBOARD.md).
 
 ```bash

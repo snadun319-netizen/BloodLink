@@ -1,19 +1,15 @@
-import { createDemo } from './demo';
-
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
 interface LoginResult { accessToken: string; refreshToken: string; user: { id: number; email: string; role: string } }
 export class Api {
-  readonly demo: boolean;
   readonly email: string;
   private expired: () => void;
   private accessToken = '';
   private refreshToken = '';
   private refreshWork: Promise<void> | null = null;
-  private demoRequest = createDemo();
   private closed = false;
-  constructor(demo: boolean, email: string, expired: () => void, tokens?: LoginResult) {
-    this.demo = demo; this.email = email; this.expired = expired;
-    if (tokens) { this.accessToken = tokens.accessToken; this.refreshToken = tokens.refreshToken; }
+  private constructor(email: string, expired: () => void, tokens: LoginResult) {
+    this.email = email; this.expired = expired;
+    this.accessToken = tokens.accessToken; this.refreshToken = tokens.refreshToken;
   }
   static async login(email: string, password: string, expired: () => void) {
     const result = await fetchJson<LoginResult>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
@@ -21,11 +17,10 @@ export class Api {
       await fetchJson('/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: result.refreshToken }) }).catch(() => {});
       throw new Error('This portal is for platform administrators. Use your institution dashboard to sign in as staff.');
     }
-    return new Api(false, result.user.email, expired, result);
+    return new Api(result.user.email, expired, result);
   }
   async request<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
     if (this.closed) throw new Error('Session has ended. Sign in again.');
-    if (this.demo) return this.demoRequest(path, method, body) as Promise<T>;
     const originalToken = this.accessToken;
     const options = () => ({ method, headers: { Authorization: `Bearer ${this.accessToken}` }, ...(body !== undefined ? { body: JSON.stringify(body) } : {}) });
     try { return await fetchJson<T>(path, options()); }
@@ -55,7 +50,7 @@ export class Api {
   }
   async logout() {
     if (this.refreshWork) await this.refreshWork.catch(() => {});
-    if (!this.demo) await fetchJson('/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: this.refreshToken }) });
+    await fetchJson('/auth/logout', { method: 'POST', body: JSON.stringify({ refreshToken: this.refreshToken }) });
     this.closed = true; this.accessToken = ''; this.refreshToken = '';
   }
 }

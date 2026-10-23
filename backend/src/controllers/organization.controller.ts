@@ -5,6 +5,7 @@ import { logAudit } from "../services/audit.service";
 
 export async function registerOrganization(req: AuthRequest, res: Response, next: NextFunction) {
   const { name, type, registrationEvidenceUrl } = req.body;
+  if (type === "bloodbank") return res.status(403).json({ error: "Blood banks are registered by a platform administrator" });
 
   if (!name || !type) {
     return res.status(400).json({ error: "Name and type are required" });

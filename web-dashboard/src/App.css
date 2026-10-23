@@ -26,9 +26,11 @@
 }
 
 .brand-icon {
-  color:var(--red);
-  display:flex;
-  align-items:center;
+  display:block;
+  width:36px;
+  height:45px;
+  object-fit:contain;
+  flex-shrink:0;
 }
 
 .brand strong {
@@ -1022,39 +1024,6 @@ td small {
   color:#c7ccda;
 }
 
-.demo-pill {
-  display:inline-flex;
-  align-items:center;
-  gap:5px;
-  font-size:9px;
-  padding:5px 9px;
-  color:#a17d3e;
-  background:#fff7e7;
-  border-radius:5px;
-}
-
-.demo-banner {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:10px;
-  color:#987641;
-  padding:9px 12px;
-  background:#fff8e9;
-  border:1px solid #f4ecd8;
-  border-radius:7px;
-  margin-bottom:17px;
-}
-
-.demo-banner>button {
-  display:flex;
-  align-items:center;
-  gap:5px;
-  font-size:9px;
-  margin-left:auto;
-  white-space:nowrap;
-}
-
 .directory-summary {
   display:flex;
   align-items:center;
@@ -1906,30 +1875,6 @@ td small {
   margin:20px 0 30px;
 }
 
-.login-divider {
-  border-top:1px solid #edf0f7;
-  text-align:center;
-  height:20px;
-  margin-top:10px;
-}
-
-.login-divider>span {
-  position:relative;
-  top:-9px;
-  background:#fff;
-  padding:0 13px;
-  font-size:8px;
-  letter-spacing:1px;
-  color:#a3adbf;
-}
-
-.login-card .demo-description {
-  font-size:9px;
-  text-align:center;
-  margin-top:10px;
-  color:#a5aebd;
-}
-
 @media(min-width:1600px) {
   .main-content {
     padding-left:48px;
@@ -2202,9 +2147,6 @@ td small {
   .topbar-actions {
     gap:10px;
   }
-  .demo-pill {
-    font-size:8px;
-  }
   .login-story-content h1 {
     font-size:32px;
   }
@@ -2367,17 +2309,6 @@ td small {
     height:36px;
     flex-shrink:0;
   }
-  .demo-banner {
-    font-size:9px;
-    padding:9px;
-    align-items:flex-start;
-  }
-  .demo-banner>span {
-    max-width:250px;
-  }
-  .demo-banner>button {
-    font-size:8px;
-  }
   .data-toolbar {
     margin-bottom:20px;
     font-size:9px;
@@ -2520,4 +2451,26 @@ td small {
   .page-footer {
     font-size:8px;
   }
+}
+
+/* Bank onboarding and credential handover. */
+.password-field { display:flex; align-items:center; position:relative; }
+.password-field input { padding-right:46px; }
+.password-field .icon-button { position:absolute; right:5px; }
+.location-picker { border:1px solid var(--line); border-radius:10px; padding:14px; background:#fafbfe; }
+.location-map { height:280px; width:100%; border-radius:8px; overflow:hidden; background:#edf1f7; }
+.location-map:empty { display:none; }
+.location-message { display:flex; align-items:center; gap:12px; padding:20px 5px; color:#727d93; line-height:1.7; font-size:12px; }
+.location-message p { margin:0; }
+.location-message svg { flex-shrink:0; }
+.location-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin:14px 0; }
+.onboarding-card { padding:22px; }
+.onboarding-card .card-heading { padding:0; }
+.onboarding-steps { padding-left:20px; margin:20px 0; color:#727d93; font-size:12px; line-height:1.8; }
+.onboarding-steps li { margin-bottom:12px; padding-left:4px; }
+@media(max-width:600px) {
+  .location-map { height:240px; }
+  .location-picker { padding:10px; }
+  .modal .form-grid { grid-template-columns:minmax(0,1fr); }
+  .modal-footer { flex-wrap:wrap; }
 }

@@ -8,6 +8,8 @@ import {
 import { authenticate, requireRole } from "../middleware/auth.middleware";
 import { validateRouteIds, validateAdminQuery, validateNetworkOrganization, validateOrganizationAccess, validateStaffInput } from "../middleware/validation.middleware";
 import { listNetworkOrganizations, networkOverview, networkOrganizationDetails, createNetworkOrganization, editNetworkOrganization, setNetworkOrganizationAccess, listNetworkStaff, createNetworkStaff } from "../controllers/networkAdmin.controller";
+import { onboardBloodBank, createBankAccount, assignBankAccount, listBankAccounts } from "../controllers/networkAdmin.controller";
+import { validateBankAccount, validateBankOnboarding, validateBankAccountSelection } from "../middleware/validation.middleware";
 
 const router = Router();
 
@@ -20,6 +22,10 @@ router.patch("/users/:id/status", updateUserStatus);
 router.get("/stats", getDashboardStats);
 router.get("/audit-logs", listAuditLogs);
 router.get("/network-overview", networkOverview);
+router.post("/blood-banks", validateNetworkOrganization, validateBankOnboarding, validateBankAccountSelection, onboardBloodBank);
+router.post("/blood-banks/:id/account", validateRouteIds, validateBankAccountSelection, assignBankAccount);
+router.post("/bank-accounts", validateBankAccount, createBankAccount);
+router.get("/bank-accounts", listBankAccounts);
 router.get("/organizations", listNetworkOrganizations);
 router.post("/organizations", validateNetworkOrganization, createNetworkOrganization);
 router.get("/organizations/:id", validateRouteIds, networkOrganizationDetails);

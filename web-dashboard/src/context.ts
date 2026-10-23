@@ -1,9 +1,12 @@
 import { createContext, useContext } from 'react';
-import type { Snapshot } from './types';
+import type { Snapshot, AccountCredentials } from './types';
 import type { Api } from './api';
 export interface DashboardContext {
   data: Snapshot; api: Api; busy: boolean;
-  mutate: (path: string, body: unknown, message: string, method?: string) => Promise<void>;
+  credentials: Record<number, AccountCredentials>;
+  rememberCredentials: (id: number, credentials: AccountCredentials) => void;
+  forgetCredentials: (id: number) => void;
+  mutate: <T = unknown>(path: string, body: unknown, message: string, method?: string) => Promise<T>;
 }
 export const Dashboard = createContext<DashboardContext | null>(null);
 export function useDashboard() {

@@ -90,7 +90,7 @@ export async function completePasswordReset(token: string, password: string, ema
       [hashToken(token), user.id]
     );
     if (!proof.rows.length) return null;
-    await client.query("UPDATE users SET password_hash = $1, failed_login_attempts = 0, locked_until = NULL, updated_at = NOW() WHERE id = $2", [passwordHash, user.id]);
+    await client.query("UPDATE users SET password_hash = $1, must_change_password = false, failed_login_attempts = 0, locked_until = NULL, updated_at = NOW() WHERE id = $2", [passwordHash, user.id]);
     await client.query("UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = $1 AND used_at IS NULL", [user.id]);
     await client.query("UPDATE password_reset_email_jobs SET status = 'cancelled', lease_until = NULL WHERE user_id = $1", [user.id]);
     await revokeAllUserTokens(user.id, client);

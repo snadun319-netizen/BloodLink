@@ -18,6 +18,12 @@ per donor, coordinate/counter constraints, and timezone-aware timestamps.
 access enabled; contact/location metadata is optional. Suspending an approved
 institution is separate from rejecting its registration and revokes staff sessions.
 
+`migration_004_bank_onboarding.sql` adds main-bank/branch relationships and a unique
+primary account per blood bank or branch. New admin-provisioned bank accounts must
+replace their temporary password. Existing accounts retain their passwords and do
+not receive a forced reset. The migration runner accepts equivalent LF/CRLF SQL
+checkouts while continuing to reject substantive changes to applied migrations.
+
 The upgrade intentionally logs out pre-upgrade sessions, invalidates old registration
 codes and insecure reset grants, and normalizes emails, NICs, and Sri Lankan phone formats.
 It preserves users, password hashes, profiles, verification documents, and audit history.
@@ -35,3 +41,5 @@ Future matching queries must require this flag alongside availability and eligib
 Run the API with a limited database role, not a PostgreSQL superuser. Use a separate
 migration owner and a separate CREATEDB-capable test account. Production backups, database
 TLS, document access control, retention policies, and monitoring require deployment setup.
+
+`migration_005_account_first_onboarding.sql` allows primary bank accounts to exist before a bank record is created. Unassigned accounts remain unable to authenticate. Registering a bank assigns one pre-created account atomically; the unique primary-account index continues to prevent duplicate bank links. Existing assignments and credentials are preserved.

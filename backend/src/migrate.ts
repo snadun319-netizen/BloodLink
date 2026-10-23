@@ -16,10 +16,13 @@ export async function runMigrations(initialize = false): Promise<void> {
     const directory = path.resolve(__dirname, "../../database");
     for (const name of fs.readdirSync(directory).filter(name => /^migration_\d+.*\.sql$/.test(name)).sort()) {
       const sql = fs.readFileSync(path.join(directory, name), "utf8");
-      const checksum = crypto.createHash("sha256").update(sql).digest("hex");
+      const hash = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
+      // Git can check out SQL with LF or CRLF. Preserve checks against actual SQL changes.
+      const normalized = sql.replace(/\r\n/g, "\n");
+      const checksum = hash(normalized);
       const previous = (await client.query("SELECT checksum FROM schema_migrations WHERE name = $1", [name])).rows[0];
       if (previous) {
-        if (previous.checksum !== checksum) throw new Error("Applied migration changed: " + name);
+        if (![checksum, hash(sql), hash(normalized.replace(/\n/g, "\r\n"))].includes(previous.checksum)) throw new Error("Applied migration changed: " + name);
         continue;
       }
       await client.query(sql);
