@@ -48,18 +48,23 @@ export function useBloodRequests(initialTab: RequestTabType = 'alerts') {
   };
 
   const handleRespondToRequest = async (request: AlertRequestItem) => {
-    await respondToAlertRequest(request.id, 'accepted');
-    setIsDetailModalOpen(false);
-    Alert.alert(
-      'Mission Initiated',
-      `Thank you for responding! You have been marked en route to ${request.hospitalName}.`,
-      [
-        {
-          text: 'View Active Mission',
-          onPress: () => setActiveTab('active'),
-        },
-      ]
-    );
+    try {
+      await respondToAlertRequest(request.id, 'accepted');
+      setIsDetailModalOpen(false);
+      await loadData(false);
+      Alert.alert(
+        'Mission Initiated',
+        `Thank you for responding! You have been marked en route to ${request.hospitalName}.`,
+        [
+          {
+            text: 'View Active Mission',
+            onPress: () => setActiveTab('active'),
+          },
+        ]
+      );
+    } catch {
+      Alert.alert('Error', 'Unable to register mission response. Please try again.');
+    }
   };
 
   const handleOpenDirections = () => {
@@ -99,9 +104,13 @@ export function useBloodRequests(initialTab: RequestTabType = 'alerts') {
 
   const handleSendCoordinatorNotification = async (reason: string) => {
     if (data?.activeMission) {
-      await notifyMissionCoordinator(data.activeMission.id, reason);
-      setIsCoordinatorModalOpen(false);
-      Alert.alert('Notification Sent', 'The hospital coordinator has been notified of your status.');
+      try {
+        await notifyMissionCoordinator(data.activeMission.id, reason);
+        setIsCoordinatorModalOpen(false);
+        Alert.alert('Notification Sent', 'The hospital coordinator has been notified of your status.');
+      } catch {
+        Alert.alert('Error', 'Unable to send notification to coordinator. Please try again.');
+      }
     }
   };
 

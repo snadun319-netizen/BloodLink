@@ -6,6 +6,7 @@ import {
   getNearbyBloodRequests,
   getMyDonations,
 } from "../controllers/donor.controller";
+import { getRequestsPageData } from "../controllers/requests.controller";
 import { optionalAuthenticate } from "../middleware/auth.middleware";
 import { validateRouteIds } from "../middleware/validation.middleware";
 
@@ -16,6 +17,9 @@ router.use(donorVerificationRoutes);
 
 // GET /api/donors/home - Personalized dashboard data (donor profile, emergency match, active requests)
 router.get("/home", optionalAuthenticate, getDonorHomeDashboard);
+
+// GET /api/donors/requests/me - Real requests page payload (alias for /api/requests/me)
+router.get("/requests/me", optionalAuthenticate, getRequestsPageData);
 
 // GET /api/donors/requests - Nearby active blood requests
 router.get("/requests", optionalAuthenticate, getNearbyBloodRequests);
