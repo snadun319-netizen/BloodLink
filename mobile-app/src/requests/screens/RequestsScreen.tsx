@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import DonorBottomNav, { DonorTab } from '../../components/DonorBottomNav';
 import {
   RequestsHeader,
@@ -116,7 +117,7 @@ export const RequestsScreen: React.FC<RequestsScreenProps> = ({
           ) : (
             /* ================= WINDOW 2: ACTIVE MISSION ================= */
             <View style={styles.activeContainer}>
-              {data?.activeMission && (
+              {data?.activeMission ? (
                 <>
                   {/* Top Dispatch Mission Card */}
                   <ActiveMissionCard
@@ -143,6 +144,23 @@ export const RequestsScreen: React.FC<RequestsScreenProps> = ({
                     </TouchableOpacity>
                   </View>
                 </>
+              ) : (
+                <View style={styles.emptyMissionCard}>
+                  <View style={styles.emptyIconCircle}>
+                    <Ionicons name="shield-checkmark-outline" size={38} color="#94A3B8" />
+                  </View>
+                  <Text style={styles.emptyMissionTitle}>No Active Mission</Text>
+                  <Text style={styles.emptyMissionDesc}>
+                    When you accept an urgent blood request alert, your dispatch mission and real-time hospital coordinator details will appear here.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.browseButton}
+                    onPress={() => setActiveTab('alerts')}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={styles.browseButtonText}>Browse Available Alerts</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
           )}
@@ -216,6 +234,54 @@ const styles = StyleSheet.create({
     color: '#BA1328',
     fontWeight: '700',
     textDecorationLine: 'underline',
+  },
+  emptyMissionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyMissionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 8,
+  },
+  emptyMissionDesc: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  browseButton: {
+    backgroundColor: '#BA1328',
+    paddingVertical: 12,
+    paddingHorizontal: 22,
+    borderRadius: 10,
+  },
+  browseButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
 export default RequestsScreen;
