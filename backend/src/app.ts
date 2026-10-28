@@ -7,6 +7,7 @@ import organizationRoutes from "./routes/organization.routes";
 import donorRoutes from "./routes/donor.routes";
 import staffRoutes from "./routes/staff.routes";
 import adminRoutes from "./routes/admin.routes";
+import requestsRoutes from "./routes/requests.routes";
 import { generalLimiter } from "./middleware/rateLimiter.middleware";
 import { validateJsonBody } from "./middleware/validation.middleware";
 import { HttpError } from "./transaction";
@@ -28,6 +29,7 @@ export function createApp() {
   app.use("/api/auth", (req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); }, authRoutes);
   app.use("/api/organizations", organizationRoutes);
   app.use("/api/donors", donorRoutes);
+  app.use("/api/requests", requestsRoutes);
   app.use("/api/staff", staffRoutes);
   app.use("/api/admin", adminRoutes);
   app.get("/", (req, res) => res.json({ name: "BloodLink REST API Server", status: "online", healthCheck: "/api/health" }));
