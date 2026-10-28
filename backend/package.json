@@ -11,12 +11,12 @@
     "seed": "ts-node src/seed.ts",
     "migrate": "ts-node src/migrate.ts",
     "type-check": "tsc --noEmit",
-    "test": "ts-node src/test_auth_flows.ts && node --test tests/mobile-api.test.cjs",
+    "test": "ts-node src/test_auth_flows.ts && node --test tests/mobile-api.test.cjs tests/requests-api.test.cjs",
     "test:auth": "ts-node src/test_auth_flows.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "db:init": "ts-node src/migrate.ts --init",
-    "test:client": "node --test tests/mobile-api.test.cjs"
+    "test:client": "node --test tests/mobile-api.test.cjs tests/requests-api.test.cjs"
   },
   "keywords": [],
   "author": "",
