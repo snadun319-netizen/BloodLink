@@ -1,4 +1,3 @@
-
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -29,6 +28,8 @@ export default function VerificationSection({ profile, uploading, onUpload }: Pr
         s === 'approved' ? colors.success : s === 'pending' ? colors.warning : colors.danger;
     const statusSoft = (s: VerificationStatus) =>
         s === 'approved' ? colors.successSoft : s === 'pending' ? colors.warningSoft : colors.dangerSoft;
+
+    const hasNic = Boolean(profile.nicNumber && profile.nicNumber.trim().length > 0);
 
     return (
         <View style={styles.card}>
@@ -61,18 +62,20 @@ export default function VerificationSection({ profile, uploading, onUpload }: Pr
                 )}
             </View>
 
-            {/* NIC verification */}
-            <View style={styles.badgeRow}>
-                <View style={[styles.badgeIcon, { backgroundColor: colors.infoSoft }]}>
-                    <Ionicons name="id-card-outline" size={22} color={colors.info} />
+            {/* NIC verification - hidden when nicNumber is empty */}
+            {hasNic && (
+                <View style={styles.badgeRow}>
+                    <View style={[styles.badgeIcon, { backgroundColor: colors.infoSoft }]}>
+                        <Ionicons name="id-card-outline" size={22} color={colors.info} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.badgeTitle}>
+                            {profile.nicVerified ? 'National identity verified' : 'National identity not verified'}
+                        </Text>
+                        <Text style={styles.badgeSub}>NIC: {maskNic(profile.nicNumber)}</Text>
+                    </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.badgeTitle}>
-                        {profile.nicVerified ? 'National identity verified' : 'National identity not verified'}
-                    </Text>
-                    <Text style={styles.badgeSub}>NIC: {maskNic(profile.nicNumber)}</Text>
-                </View>
-            </View>
+            )}
 
             {/* Latest uploaded document */}
             {doc && (

@@ -245,6 +245,7 @@ export default function App() {
               else if (tab === 'Profile') setCurrentScreen('Profile');
             }}
             onSignOut={() => { setHomeTab('Home'); setCurrentScreen('Welcome'); }}
+            onSignIn={() => setCurrentScreen('Login')}
           />
         );
 

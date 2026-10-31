@@ -1,4 +1,3 @@
-
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useMemo } from 'react';
@@ -29,9 +28,19 @@ interface Props {
     onNavigateTab: (tab: DonorTab) => void;
     onEdit: () => void;
     onSignOut: () => Promise<void>;
+    isAuthenticated?: boolean;
+    onSignIn?: () => void;
 }
 
-export default function ProfileScreen({ state, onBack, onNavigateTab, onEdit, onSignOut }: Props) {
+export default function ProfileScreen({
+    state,
+    onBack,
+    onNavigateTab,
+    onEdit,
+    onSignOut,
+    isAuthenticated = true,
+    onSignIn,
+}: Props) {
     const { colors, isDark, toggleTheme } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const { profile, loading, refreshing, uploading, error } = state;
@@ -40,7 +49,7 @@ export default function ProfileScreen({ state, onBack, onNavigateTab, onEdit, on
         try {
             await state.toggleAvailability(value);
         } catch {
-            Alert.alert('Could not update availability', 'Please check your connection and try again.');
+            Alert.alert('Could not update availability', 'This feature is not connected to the backend yet.');
         }
     };
 
@@ -77,7 +86,8 @@ export default function ProfileScreen({ state, onBack, onNavigateTab, onEdit, on
         Alert.alert('Sign out', 'Do you want to sign out of BloodLink?', [
             { text: 'Cancel', style: 'cancel' },
             {
-                text: 'Sign out', style: 'destructive',
+                text: 'Sign out',
+                style: 'destructive',
                 onPress: () => {
                     void onSignOut().catch(() => Alert.alert('Could not sign out', 'Please try again.'));
                 },
@@ -100,7 +110,18 @@ export default function ProfileScreen({ state, onBack, onNavigateTab, onEdit, on
                 </Pressable>
             </View>
 
-            {loading && !profile ? (
+            {!isAuthenticated && !profile && !loading ? (
+                <View style={styles.center}>
+                    <Ionicons name="person-circle-outline" size={64} color={colors.textMuted} style={{ marginBottom: 12 }} />
+                    <Text style={styles.errorTitle}>Please sign in to view your profile</Text>
+                    <Text style={styles.errorText}>Sign in to view your real donation credentials, verification badges, and status.</Text>
+                    {onSignIn && (
+                        <Pressable style={styles.retry} onPress={onSignIn} accessibilityRole="button">
+                            <Text style={styles.retryText}>Sign in</Text>
+                        </Pressable>
+                    )}
+                </View>
+            ) : loading && !profile ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color={colors.primary} />
                 </View>

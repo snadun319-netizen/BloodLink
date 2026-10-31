@@ -37,7 +37,7 @@ export default function ProfileHeaderCard({ profile, onToggleAvailability, onEdi
                         <Ionicons name="create-outline" size={15} color={colors.textMuted} />
                     </View>
                     <Text style={styles.sub}>
-                        {profile.phone} • {profile.district}
+                        {[profile.phone, profile.district].filter((s) => s && s.trim().length > 0).join(' • ')}
                     </Text>
                     <Text style={styles.since}>Donor since {formatMonthYear(profile.donorSince)}</Text>
                 </Pressable>

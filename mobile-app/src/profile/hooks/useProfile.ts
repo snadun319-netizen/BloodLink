@@ -1,14 +1,14 @@
-
 import { useCallback, useEffect, useState } from 'react';
 import {
     fetchMyProfile,
     setMyAvailability,
     updateMyProfile,
     uploadVerificationDocument,
+    USE_MOCK,
 } from '../services/profileService';
 import { DonorProfile, EditableProfileFields, PickedFile } from '../types/profile';
 
-export function useProfile() {
+export function useProfile(isAuthenticated: boolean = true) {
     const [profile, setProfile] = useState<DonorProfile | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -16,6 +16,14 @@ export function useProfile() {
     const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async (isRefresh = false) => {
+        if (!isAuthenticated && !USE_MOCK) {
+            setProfile(null);
+            setLoading(false);
+            setRefreshing(false);
+            setError(null);
+            return;
+        }
+
         isRefresh ? setRefreshing(true) : setLoading(true);
         setError(null);
         try {
@@ -26,7 +34,7 @@ export function useProfile() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, []);
+    }, [isAuthenticated]);
 
     useEffect(() => {
         load();

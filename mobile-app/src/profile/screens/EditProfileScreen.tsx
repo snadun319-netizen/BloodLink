@@ -1,4 +1,3 @@
-
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import {
@@ -37,7 +36,7 @@ export default function EditProfileScreen({ profile, onSave, onClose }: Props) {
 
     const [fullName, setFullName] = useState(profile.fullName);
     const [phone, setPhone] = useState(profile.phone);
-    const [district, setDistrict] = useState(profile.district);
+    const [district, setDistrict] = useState(profile.district || '');
     const [errors, setErrors] = useState<{ fullName?: string; phone?: string }>({});
     const [saving, setSaving] = useState(false);
 
@@ -53,7 +52,7 @@ export default function EditProfileScreen({ profile, onSave, onClose }: Props) {
         if (!validate()) return;
         setSaving(true);
         try {
-            await onSave({ fullName: fullName.trim(), phone: phone.trim(), district });
+            await onSave({ fullName: fullName.trim(), phone: phone.trim(), district: district.trim() });
             onClose();
         } catch (e) {
             Alert.alert('Could not save changes', e instanceof Error ? e.message : 'Please try again.');
@@ -96,7 +95,7 @@ export default function EditProfileScreen({ profile, onSave, onClose }: Props) {
                     />
                     {errors.phone && <Text style={styles.error}>{errors.phone}</Text>}
 
-                    <Text style={styles.label}>District</Text>
+                    <Text style={styles.label}>District (optional)</Text>
                     <Text style={styles.hint}>
                         Used only to match you with nearby blood requests. It is never shown to other users.
                     </Text>
@@ -106,7 +105,7 @@ export default function EditProfileScreen({ profile, onSave, onClose }: Props) {
                             return (
                                 <Pressable
                                     key={d}
-                                    onPress={() => setDistrict(d)}
+                                    onPress={() => setDistrict(selected ? '' : d)}
                                     style={[styles.chip, selected && styles.chipSelected]}
                                     accessibilityRole="button"
                                     accessibilityState={{ selected }}
@@ -161,23 +160,23 @@ const createStyles = (c: ColorPalette) =>
             alignItems: 'center',
             justifyContent: 'center',
         },
-        title: { fontSize: 22, fontWeight: '800', color: c.text },
-        content: { paddingHorizontal: 20, paddingBottom: 40 },
-        label: { fontSize: 14, fontWeight: '700', color: c.text, marginTop: 18, marginBottom: 8 },
-        hint: { fontSize: 12, color: c.textMuted, marginBottom: 8 },
+        title: { fontSize: 18, fontWeight: '700', color: c.text },
+        content: { padding: 20, paddingBottom: 40 },
+        label: { fontSize: 13, fontWeight: '600', color: c.text, marginTop: 16, marginBottom: 8 },
+        hint: { fontSize: 12, lineHeight: 18, color: c.textMuted, marginBottom: 10 },
         input: {
             backgroundColor: c.card,
             borderWidth: 1,
             borderColor: c.border,
             borderRadius: radius.md,
-            paddingHorizontal: 16,
-            height: 52,
-            fontSize: 16,
+            paddingHorizontal: 14,
+            paddingVertical: 12,
+            fontSize: 15,
             color: c.text,
         },
         inputError: { borderColor: c.danger },
         error: { color: c.danger, fontSize: 12, marginTop: 6 },
-        chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+        chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
         chip: {
             paddingHorizontal: 14,
             paddingVertical: 8,
@@ -187,28 +186,27 @@ const createStyles = (c: ColorPalette) =>
             borderColor: c.border,
         },
         chipSelected: { backgroundColor: c.primary, borderColor: c.primary },
-        chipText: { color: c.text, fontSize: 13, fontWeight: '600' },
-        chipTextSelected: { color: c.onPrimary },
+        chipText: { fontSize: 13, color: c.text },
+        chipTextSelected: { color: c.onPrimary, fontWeight: '600' },
         readonly: {
             flexDirection: 'row',
-            justifyContent: 'space-between',
             alignItems: 'center',
+            justifyContent: 'space-between',
             backgroundColor: c.card,
             borderWidth: 1,
             borderColor: c.border,
             borderRadius: radius.md,
-            paddingHorizontal: 16,
-            height: 52,
-            opacity: 0.8,
+            paddingHorizontal: 14,
+            paddingVertical: 14,
         },
-        readonlyValue: { fontSize: 16, fontWeight: '700', color: c.text },
+        readonlyValue: { fontSize: 15, fontWeight: '600', color: c.text },
         saveButton: {
-            marginTop: 28,
-            height: 54,
-            borderRadius: radius.md,
             backgroundColor: c.primary,
+            borderRadius: radius.md,
+            paddingVertical: 15,
             alignItems: 'center',
             justifyContent: 'center',
+            marginTop: 24,
         },
-        saveText: { color: c.onPrimary, fontSize: 16, fontWeight: '700' },
+        saveText: { color: c.onPrimary, fontSize: 15, fontWeight: '600' },
     });

@@ -1,4 +1,3 @@
-
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { View } from 'react-native';
@@ -13,12 +12,13 @@ interface Props {
     onBack: () => void;
     onNavigateTab: (tab: DonorTab) => void;
     onSignOut: () => void;
+    onSignIn?: () => void;
 }
 
-function Inner({ onBack, onNavigateTab, onSignOut }: Props) {
-    const { signOut } = useAuth();
+function Inner({ onBack, onNavigateTab, onSignOut, onSignIn }: Props) {
+    const { signOut, isAuthenticated } = useAuth();
     const { isDark, colors } = useTheme();
-    const profileState = useProfile(); // shared by Profile and Edit screens
+    const profileState = useProfile(isAuthenticated); // shared by Profile and Edit screens
     const [screen, setScreen] = useState<'profile' | 'edit'>('profile');
 
     return (
@@ -40,6 +40,8 @@ function Inner({ onBack, onNavigateTab, onSignOut }: Props) {
                         await signOut();
                         onSignOut();
                     }}
+                    isAuthenticated={isAuthenticated}
+                    onSignIn={onSignIn}
                 />
             )}
         </View>

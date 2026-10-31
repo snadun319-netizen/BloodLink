@@ -1,28 +1,15 @@
 // src/services/profileService.ts
 // API layer for donor profile management.
-//
-// While the backend is not ready, USE_MOCK = true returns in-memory data.
-// When the backend team finishes the endpoints, set USE_MOCK = false.
-//
-// Expected REST endpoints (agree these with the backend owner):
-//   GET    /donors/me                         -> DonorProfile
-//   PATCH  /donors/me                         -> DonorProfile   (fullName, phone, district)
-//   PATCH  /donors/me/availability            -> DonorProfile   ({ isAvailable })
-//   POST   /donors/me/verification-documents  -> DonorProfile   (multipart form, field "document")
 
-import { DonorProfile, EditableProfileFields, PickedFile } from '../types/profile';
+import { api, ApiClientError } from '../../services/api';
+import { BloodGroup, DonorProfile, EditableProfileFields, PickedFile, VerificationStatus } from '../types/profile';
 
-const USE_MOCK = true;
+// Keep a flag so the screen can still be demoed without a backend if needed.
+// Default is false so logged-in donors load their real profile from the backend.
+export const USE_MOCK = false;
 
-// Android emulator reaches the host machine through 10.0.2.2.
-// For a real device use your computer's LAN IP, or the deployed URL.
-const API_BASE_URL = 'http://10.0.2.2:3000/api';
-
-// TODO: replace with the real token from the Authentication module (JWT, secure storage).
-let authToken: string | null = null;
-export function setAuthToken(token: string | null) {
-    authToken = token;
-}
+// Backwards-compatibility stub (tokens are managed automatically by AuthContext and api.ts)
+export function setAuthToken(_token: string | null) {}
 
 // ---------------------------------------------------------------- mock data
 let mockProfile: DonorProfile = {
@@ -40,7 +27,7 @@ let mockProfile: DonorProfile = {
     verifiedBy: 'National Blood Bank',
     verifiedAt: '2022-12-10',
     nicNumber: '199812345678V',
-    nicVerified: true,
+    nicVerified: false,
     document: {
         id: 'doc-001',
         fileName: 'blood_report_dec22.pdf',
@@ -54,27 +41,7 @@ let mockProfile: DonorProfile = {
 
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-// ------------------------------------------------------------- real client
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const headers: Record<string, string> = {
-        Accept: 'application/json',
-        ...(init.headers as Record<string, string> | undefined),
-    };
-    if (authToken) headers.Authorization = `Bearer ${authToken}`;
-
-    const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
-    if (!response.ok) {
-        let message = `Request failed (${response.status})`;
-        try {
-            const body = await response.json();
-            if (body?.message) message = body.message;
-        } catch {
-            /* keep default message */
-        }
-        throw new Error(message);
-    }
-    return (await response.json()) as T;
-}
+const VALID_BLOOD_GROUPS: BloodGroup[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 // --------------------------------------------------------------- public API
 export async function fetchMyProfile(): Promise<DonorProfile> {
@@ -82,7 +49,52 @@ export async function fetchMyProfile(): Promise<DonorProfile> {
         await wait(500);
         return { ...mockProfile };
     }
-    return request<DonorProfile>('/donors/me');
+
+    const response = await api.authGet<{ user: any }>('/auth/me');
+    const user = response.data?.user;
+
+    if (!user) {
+        throw new Error('Could not load your profile.');
+    }
+
+    const rawBloodGroup = user.bloodGroup;
+    if (!rawBloodGroup || !VALID_BLOOD_GROUPS.includes(rawBloodGroup as BloodGroup)) {
+        throw new Error('Your profile is incomplete');
+    }
+
+    // Map verification status using BOTH donor_profiles.blood_group_verified and donor_verifications.status
+    let bloodGroupVerification: VerificationStatus = 'none';
+    const status = user.verificationStatus;
+    const isBloodGroupVerified = Boolean(user.bloodGroupVerified || user.blood_group_verified);
+
+    if (isBloodGroupVerified || status === 'approved') {
+        bloodGroupVerification = 'approved';
+    } else if (status === 'pending') {
+        bloodGroupVerification = 'pending';
+    } else if (status === 'rejected') {
+        bloodGroupVerification = 'rejected';
+    } else {
+        bloodGroupVerification = 'none';
+    }
+
+    return {
+        id: String(user.id),
+        fullName: user.fullName || 'Valued Donor',
+        phone: user.phone || '',
+        district: '', // District is empty for real users
+        donorSince: user.createdAt ? user.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+        bloodGroup: rawBloodGroup as BloodGroup,
+        isAvailable: user.isAvailable ?? true,
+        totalDonations: 0, // Neutral default
+        lastDonationDate: user.lastDonationDate ? user.lastDonationDate.split('T')[0] : null,
+        lastDonationPlace: null, // Neutral default
+        bloodGroupVerification,
+        verifiedBy: undefined,
+        verifiedAt: undefined,
+        nicNumber: user.nic || '',
+        nicVerified: false, // Database has no NIC verification
+        document: null, // Keep null unless the backend provides one
+    };
 }
 
 export async function updateMyProfile(fields: EditableProfileFields): Promise<DonorProfile> {
@@ -91,11 +103,7 @@ export async function updateMyProfile(fields: EditableProfileFields): Promise<Do
         mockProfile = { ...mockProfile, ...fields };
         return { ...mockProfile };
     }
-    return request<DonorProfile>('/donors/me', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fields),
-    });
+    throw new Error('This feature is not connected to the backend yet.');
 }
 
 export async function setMyAvailability(isAvailable: boolean): Promise<DonorProfile> {
@@ -104,11 +112,7 @@ export async function setMyAvailability(isAvailable: boolean): Promise<DonorProf
         mockProfile = { ...mockProfile, isAvailable };
         return { ...mockProfile };
     }
-    return request<DonorProfile>('/donors/me/availability', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isAvailable }),
-    });
+    throw new Error('This feature is not connected to the backend yet.');
 }
 
 export async function uploadVerificationDocument(file: PickedFile): Promise<DonorProfile> {
@@ -128,12 +132,5 @@ export async function uploadVerificationDocument(file: PickedFile): Promise<Dono
         };
         return { ...mockProfile };
     }
-
-    const form = new FormData();
-    // React Native's FormData accepts { uri, name, type } for files.
-    form.append('document', { uri: file.uri, name: file.name, type: file.mimeType } as unknown as Blob);
-    return request<DonorProfile>('/donors/me/verification-documents', {
-        method: 'POST',
-        body: form,
-    });
+    throw new Error('This feature is not connected to the backend yet.');
 }
