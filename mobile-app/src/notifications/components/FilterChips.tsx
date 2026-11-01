@@ -6,7 +6,7 @@ import { ColorPalette, radius, useTheme } from '../../profile/theme';
 export interface FilterChip {
     key: string;
     label: string;
-    count: number;
+    count?: number;
 }
 
 interface Props {
@@ -36,8 +36,11 @@ export default function FilterChips({ filters, selected, onSelect }: Props) {
                         accessibilityRole="button"
                         accessibilityState={{ selected: active }}
                     >
-                        <Text style={[styles.text, active && styles.textActive]}>
-                            {f.label} ({f.count})
+                        <Text
+                            maxFontSizeMultiplier={1.2}
+                            style={[styles.text, active && styles.textActive]}
+                        >
+                            {f.count !== undefined ? `${f.label} (${f.count})` : f.label}
                         </Text>
                     </Pressable>
                 );
@@ -48,15 +51,29 @@ export default function FilterChips({ filters, selected, onSelect }: Props) {
 
 const createStyles = (c: ColorPalette) =>
     StyleSheet.create({
-        scroll: { flexGrow: 0 },
-        row: { paddingHorizontal: 20, gap: 10 },
+        scroll: { flexGrow: 0, overflow: 'visible' },
+        row: {
+            paddingHorizontal: 20,
+            paddingVertical: 4,
+            gap: 10,
+            alignItems: 'center',
+        },
         chip: {
-            paddingHorizontal: 18,
-            paddingVertical: 10,
+            minHeight: 40,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
             borderRadius: radius.pill,
             backgroundColor: c.infoSoft,
+            justifyContent: 'center',
+            alignItems: 'center',
         },
         chipActive: { backgroundColor: c.primary },
-        text: { fontSize: 15, fontWeight: '700', color: c.text },
+        text: {
+            fontSize: 14,
+            lineHeight: 20,
+            fontWeight: '700',
+            color: c.text,
+            includeFontPadding: false,
+        },
         textActive: { color: c.onPrimary },
     });

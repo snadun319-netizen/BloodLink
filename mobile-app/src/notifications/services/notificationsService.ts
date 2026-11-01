@@ -54,7 +54,7 @@ function buildMock(): AppNotification[] {
                 volumeMl: 450,
                 allClear: true,
                 doctorMessage:
-                    'Thank you Kavindu. Your donation from 15 May was cleared and dispatched to Sabaragamuwa GH Pediatric Unit. Your next donation window has been unlocked.',
+                    'Thank you {firstName}. Your donation from 15 May was cleared and dispatched to Sabaragamuwa GH Pediatric Unit. Your next donation window has been unlocked.',
             },
         },
         {
