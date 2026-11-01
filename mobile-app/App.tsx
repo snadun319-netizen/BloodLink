@@ -177,6 +177,7 @@ export default function App() {
             onNavigateToHistory={() => setCurrentScreen('History')}
             onNavigateToProfile={() => setCurrentScreen('Profile')}
             onLogout={() => { setHomeTab('Home'); setCurrentScreen('Login'); }}
+            onOpenNotifications={() => setCurrentScreen('Notifications')}
           />
         );
       //ISURI-BLOOD REQUEST PAGE

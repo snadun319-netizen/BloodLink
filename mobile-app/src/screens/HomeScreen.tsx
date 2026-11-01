@@ -63,6 +63,7 @@ interface HomeScreenProps {
   onNavigateToHistory?: () => void;
   onNavigateToProfile?: () => void;
   onLogout?: () => void;
+  onOpenNotifications?: () => void;
 }
 
 type TabKey = DonorTab;
@@ -73,6 +74,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigateToBanks,
   onNavigateToHistory,
   onNavigateToProfile,
+  onOpenNotifications,
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [showEmergencyCard, setShowEmergencyCard] = useState(true);
@@ -210,7 +212,13 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             accessibilityRole="button"
             accessibilityLabel={`Notifications, ${currentDonor.unreadNotificationsCount || 0} unread`}
             activeOpacity={0.75}
-            onPress={() => Alert.alert('Notifications', `You have ${currentDonor.unreadNotificationsCount || 0} unread blood request notification(s).`)}
+            onPress={() => {
+              if (onOpenNotifications) {
+                onOpenNotifications();
+              } else {
+                Alert.alert('Notifications', `You have ${currentDonor.unreadNotificationsCount || 0} unread blood request notification(s).`);
+              }
+            }}
           >
             <Ionicons name="notifications-outline" size={21} color="#334155" />
             {(currentDonor.unreadNotificationsCount || 0) > 0 && <View style={styles.notificationDot} />}
