@@ -1,11 +1,12 @@
-import { useEffect, useRef, useId } from 'react';
+import { useEffect, useRef, useId, useState } from 'react';
 import type { ReactNode } from 'react';
 import { X, Search, Building2, ChevronLeft, ChevronRight, ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Organization } from './types';
 import { bankCode, bankStatus } from './types';
+import { useDashboard } from './context';
 
-export function Brand() { return <div className="brand"><img className="brand-icon" src="/logo.png" alt="BloodLink logo" width={36} height={45} /><div><strong>Blood<span>Link</span></strong><small>NETWORK ADMINISTRATION</small></div></div>; }
+export function Brand({ subtitle = 'NETWORK ADMINISTRATION' }: { subtitle?: string }) { return <div className="brand"><img className="brand-icon" src="/logo.png" alt="BloodLink logo" width={36} height={45} /><div><strong>Blood<span>Link</span></strong><small>{subtitle}</small></div></div>; }
 export function Badge({ status, children }: { status: string; children?: ReactNode }) { return <span className={`badge badge-${status.toLowerCase()}`}><i />{children || status.charAt(0).toUpperCase() + status.slice(1)}</span>; }
 export function PageHeading({ eyebrow, title, description, children }: { eyebrow: string; title: string; description: string; children?: ReactNode }) { return <div className="page-heading"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div><div className="heading-actions">{children}</div></div>; }
 export function SearchBox({ value, onChange, placeholder = 'Search…' }: { value: string; onChange: (value: string) => void; placeholder?: string }) { return <label className="search-box"><Search size={16} /><input aria-label={placeholder} placeholder={placeholder} value={value} onChange={event => onChange(event.target.value)} />{value && <button type="button" aria-label="Clear search" onClick={() => onChange('')}><X size={14} /></button>}</label>; }
@@ -31,4 +32,18 @@ export function BankTable({ banks, onSelect, compact = false }: { banks: Organiz
 }
 export function CardHeading({ title, subtitle, link, to }: { title: string; subtitle?: string; link?: string; to?: string }) { return <div className="card-heading"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{link && to && <Link className="text-link" to={to}>{link}<ArrowUpRight size={14} /></Link>}</div>; }
 export function formatDate(value: string, withTime = false) { return new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Colombo', day: '2-digit', month: 'short', year: 'numeric', ...(withTime ? { hour: '2-digit', minute: '2-digit' } as const : {}) }).format(new Date(value)); }
-export function Evidence({ url }: { url: string | null }) { return url?.startsWith('https://') ? <a className="text-link" href={url} target="_blank" rel="noopener noreferrer">View submitted evidence<ArrowUpRight size={14} /></a> : <span className="muted break-word">{url ? `Document reference: ${url}` : 'No evidence document provided'}</span>; }
+export function Evidence({ url }: { url: string | null }) {
+  const { api } = useDashboard();
+  const [busy, setBusy] = useState(false), [error, setError] = useState('');
+  if (url?.startsWith('/api/documents/')) return <><button className="text-button" disabled={busy} onClick={async () => {
+    setBusy(true); setError('');
+    try {
+      const blob = await api.downloadDocument(url), objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a'); link.href = objectUrl;
+      link.download = `verification-document.${blob.type === 'application/pdf' ? 'pdf' : blob.type === 'image/png' ? 'png' : 'jpg'}`;
+      link.click(); setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Download failed'); }
+    finally { setBusy(false); }
+  }}>{busy ? 'Downloading…' : 'Download evidence'}</button>{error && <small role="alert">{error}</small>}</>;
+  return url?.startsWith('https://') ? <a className="text-link" href={url} target="_blank" rel="noopener noreferrer">View submitted evidence<ArrowUpRight size={14} /></a> : <span className="muted break-word">{url ? `Document reference: ${url}` : 'No evidence document provided'}</span>;
+}
