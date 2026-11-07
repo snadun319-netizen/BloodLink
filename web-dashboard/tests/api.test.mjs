@@ -44,14 +44,22 @@ test('invalid credentials and backend outages cannot create a session', async ()
   await assert.rejects(Api.login('admin@example.com', 'CorrectPassword123!', () => {}), /Cannot reach BloodLink/);
 });
 
-test('staff login is rejected and the issued session is logged out', async () => {
+test('donor login is rejected and the issued session is logged out', async () => {
   let logout = false;
   globalThis.fetch = async (url, options) => {
-    if (url.endsWith('/auth/login')) return json({ ...tokens, user: { ...tokens.user, role: 'bloodbank_staff' } });
+    if (url.endsWith('/auth/login')) return json({ ...tokens, user: { ...tokens.user, role: 'donor' } });
     assert.ok(url.endsWith('/auth/logout')); assert.equal(JSON.parse(options.body).refreshToken, 'old-refresh'); logout = true; return json({});
   };
-  await assert.rejects(Api.login('staff@example.com', 'password', () => {}), /platform administrators/);
+  await assert.rejects(Api.login('donor@example.com', 'password', () => {}), /mobile app/);
   assert.equal(logout, true);
+});
+
+test('institution login preserves role and temporary-password requirement for workspace routing', async () => {
+  for (const role of ['bloodbank_staff', 'hospital_staff']) {
+    globalThis.fetch = async () => json({ ...tokens, user: { ...tokens.user, role, mustChangePassword: true } });
+    const api = await Api.login('bank@example.com', 'password', () => {});
+    assert.equal(api.role, role); assert.equal(api.mustChangePassword, true);
+  }
 });
 
 test('parallel requests and late 401 responses share one token refresh', async () => {
