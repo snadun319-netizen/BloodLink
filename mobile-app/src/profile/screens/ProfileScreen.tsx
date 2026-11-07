@@ -41,7 +41,7 @@ export default function ProfileScreen({
     isAuthenticated = true,
     onSignIn,
 }: Props) {
-    const { colors, isDark, toggleTheme } = useTheme();
+    const { colors } = useTheme();
     const styles = useMemo(() => createStyles(colors), [colors]);
     const { profile, loading, refreshing, uploading, error } = state;
 
@@ -99,15 +99,6 @@ export default function ProfileScreen({
         <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
             <View style={styles.titleRow}>
                 <Text style={styles.title}>Profile</Text>
-                <Pressable
-                    onPress={toggleTheme}
-                    style={styles.themeButton}
-                    accessibilityRole="button"
-                    accessibilityLabel="Toggle light and dark theme"
-                    accessibilityState={{ selected: isDark }}
-                >
-                    <Ionicons name={isDark ? 'moon-outline' : 'sunny-outline'} size={20} color={colors.text} />
-                </Pressable>
             </View>
 
             {!isAuthenticated && !profile && !loading ? (
@@ -257,16 +248,6 @@ const createStyles = (c: ColorPalette) =>
             paddingBottom: 12,
         },
         title: { fontSize: 22, lineHeight: 30, fontWeight: '600', color: c.text },
-        themeButton: {
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            backgroundColor: c.card,
-            borderWidth: 1,
-            borderColor: c.border,
-            alignItems: 'center',
-            justifyContent: 'center',
-        },
         content: { paddingHorizontal: 20, paddingBottom: 40, gap: 14 },
         grid: { flexDirection: 'row', gap: 14 },
         center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },

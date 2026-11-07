@@ -1,4 +1,5 @@
 import { pool } from "../db";
+import { PoolClient } from 'pg';
 
 interface AuditLogParams {
   actorUserId: string;
@@ -9,9 +10,9 @@ interface AuditLogParams {
   ipAddress?: string;
 }
 
-export async function logAudit(params: AuditLogParams) {
-  try {
-    await pool.query(
+export async function logAudit(params: AuditLogParams, client?: PoolClient) {
+  const persist = async () => {
+    await (client || pool).query(
       `INSERT INTO audit_logs (actor_user_id, action, target_type, target_id, metadata, ip_address)
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [
@@ -23,7 +24,9 @@ export async function logAudit(params: AuditLogParams) {
         params.ipAddress || null,
       ],
     );
-  } catch (err) {
+  };
+  if (client) return persist();
+  try { await persist(); } catch {
     console.error("Audit log could not be persisted");
   }
 }

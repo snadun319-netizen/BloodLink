@@ -46,6 +46,7 @@ export function createTestData() {
         staff_count: staff.filter(member => member.organization_id === bank.id).length,
       }))) };
       if (path === '/admin/bank-accounts') return { accounts: structuredClone(memberRows().filter(member => member.is_bank_account)) };
+      if (path === '/admin/blood-requests') return { requests: [] };
       if (path === '/donors/admin/pending') return { verifications: structuredClone(verifications) };
       if (path === '/admin/network-overview') {
         const active = organizations.filter(bank => bank.verification_status === 'approved' && bank.is_active);

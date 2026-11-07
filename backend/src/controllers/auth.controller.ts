@@ -13,6 +13,7 @@ const MAX_FAILED_ATTEMPTS = 5;
 
 export async function register(req: Request, res: Response) {
   const { email, password, fullName, phone, nic, bloodGroup, dob, documentUrl, registrationToken } = req.body;
+  if (documentUrl) throw new HttpError(400, 'Upload a private document from your profile after registering');
   const passwordHash = await hashPassword(password);
   const result = await transaction(async client => {
     const duplicate = await client.query("SELECT id FROM users WHERE LOWER(email) = $1", [email]);

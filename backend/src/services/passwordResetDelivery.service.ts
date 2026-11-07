@@ -59,8 +59,9 @@ export async function processPasswordResetJobs(): Promise<void> {
 export function startPasswordResetWorker(): () => Promise<void> {
   let running: Promise<void> | undefined;
   let lastCleanup = 0;
+  let stopping = false;
   const tick = () => {
-    if (!running) running = (async () => {
+    if (!stopping && !running) running = (async () => {
       await processPasswordResetJobs();
       if (Date.now() - lastCleanup >= 60000) {
         await cleanupExpiredOtps();
@@ -74,5 +75,5 @@ export function startPasswordResetWorker(): () => Promise<void> {
   tick();
   const interval = setInterval(tick, 1000);
   interval.unref();
-  return async () => { clearInterval(interval); await running; };
+  return async () => { stopping = true; clearInterval(interval); await running; };
 }
