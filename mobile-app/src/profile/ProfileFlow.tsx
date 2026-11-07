@@ -50,7 +50,7 @@ function Inner({ onBack, onNavigateTab, onSignOut, onSignIn }: Props) {
 
 export default function ProfileFlow(props: Props) {
     return (
-        <ThemeProvider>
+        <ThemeProvider forceLight={true}>
             <Inner {...props} />
         </ThemeProvider>
     );
