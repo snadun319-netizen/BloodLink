@@ -15,12 +15,12 @@ interface Props {
 }
 
 function Inner({ onBack, onViewRequest }: Props) {
-    const { isDark, colors } = useTheme();
+    const { colors } = useTheme();
     const state = useNotifications();
 
     return (
         <View style={{ flex: 1, backgroundColor: colors.background }}>
-            <StatusBar style={isDark ? 'light' : 'dark'} />
+            <StatusBar style="dark" />
             <NotificationsScreen state={state} onBack={onBack} onViewRequest={onViewRequest} />
         </View>
     );
@@ -29,7 +29,7 @@ function Inner({ onBack, onViewRequest }: Props) {
 export default function NotificationsFlow(props: Props) {
     return (
         <SafeAreaProvider>
-            <ThemeProvider>
+            <ThemeProvider forceLight>
                 <Inner {...props} />
             </ThemeProvider>
         </SafeAreaProvider>

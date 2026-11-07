@@ -58,11 +58,11 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
         () =>
             FILTERS.map((f) => {
                 const categoryItems = f.key === 'all' ? items : items.filter((n) => n.category === f.key);
-                const hasUnread = categoryItems.some((n) => !n.isRead);
+                const unreadInCategory = categoryItems.filter((n) => !n.isRead).length;
                 return {
                     key: f.key,
                     label: f.label,
-                    count: hasUnread ? categoryItems.length : undefined,
+                    count: unreadInCategory > 0 ? unreadInCategory : undefined,
                 };
             }),
         [items],
@@ -121,17 +121,7 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
                     <Text style={styles.title} numberOfLines={1} maxFontSizeMultiplier={1.2}>
                         Notifications
                     </Text>
-                    {unreadCount > 0 && (
-                        <View style={styles.newBadge}>
-                            <Text style={styles.newBadgeText} maxFontSizeMultiplier={1.2}>
-                                {unreadCount} New
-                            </Text>
-                        </View>
-                    )}
                 </View>
-            </View>
-
-            <View style={styles.actionRow}>
                 <Pressable
                     onPress={handleMarkAll}
                     disabled={unreadCount === 0}
@@ -139,10 +129,8 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
                     accessibilityRole="button"
                     accessibilityLabel="Mark all notifications as read"
                 >
-                    <MaterialCommunityIcons name="check-all" size={18} color={colors.primary} />
-                    <Text style={styles.markAllText} maxFontSizeMultiplier={1.2}>
-                        Mark all read
-                    </Text>
+                    <MaterialCommunityIcons name="check-all" size={17} color={colors.primary} />
+                    <Text style={styles.markAllText} maxFontSizeMultiplier={1.2}>Mark all read</Text>
                 </Pressable>
             </View>
 
@@ -211,9 +199,9 @@ const createStyles = (c: ColorPalette) =>
             flexDirection: 'row',
             alignItems: 'center',
             paddingHorizontal: 20,
-            paddingTop: 8,
-            paddingBottom: 4,
-            gap: 10,
+            paddingTop: 14,
+            paddingBottom: 12,
+            gap: 8,
         },
         backButton: {
             width: 40,
@@ -228,9 +216,7 @@ const createStyles = (c: ColorPalette) =>
         },
         titleWrap: {
             flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
+            justifyContent: 'center',
             minWidth: 0,
         },
         title: {
@@ -239,39 +225,25 @@ const createStyles = (c: ColorPalette) =>
             color: c.text,
             flexShrink: 1,
         },
-        newBadge: {
-            backgroundColor: c.primary,
-            borderRadius: radius.pill,
-            paddingHorizontal: 10,
-            paddingVertical: 4,
-            flexShrink: 0,
-        },
-        newBadgeText: {
-            color: c.onPrimary,
-            fontWeight: '800',
-            fontSize: 12,
-        },
-        actionRow: {
-            flexDirection: 'row',
-            justifyContent: 'flex-end',
-            paddingHorizontal: 20,
-            paddingBottom: 8,
-        },
         markAll: {
             flexDirection: 'row',
             alignItems: 'center',
             gap: 4,
-            paddingVertical: 4,
-            paddingHorizontal: 4,
+            paddingVertical: 8,
+            paddingHorizontal: 11,
+            borderRadius: radius.pill,
+            backgroundColor: c.card,
+            borderWidth: 1,
+            borderColor: c.border,
         },
         markAllText: {
             color: c.primary,
             fontWeight: '700',
-            fontSize: 14,
+            fontSize: 12,
         },
         content: {
             paddingHorizontal: 20,
-            paddingTop: 16,
+            paddingTop: 10,
             paddingBottom: 100,
             gap: 14,
         },
