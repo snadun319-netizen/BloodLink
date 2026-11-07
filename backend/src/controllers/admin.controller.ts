@@ -1,7 +1,7 @@
 import { AuthRequest } from "../middleware/auth.middleware";
+import { audit } from '../services/coordination.service';
 import { Response, NextFunction } from "express";
 import { pool } from "../db";
-import { logAudit } from "../services/audit.service";
 import { transaction, HttpError } from "../transaction";
 import { revokeAllUserTokens } from "../services/token.service";
 
@@ -56,20 +56,13 @@ export async function updateUserStatus(req: AuthRequest, res: Response, next: Ne
       }
       const updated = await client.query("UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id, email, role, status", [status, id]);
       if (updated.rows.length) await revokeAllUserTokens(Number(id), client);
+      if (updated.rows.length) await audit(client, req, status === 'active' ? 'USER_ACTIVATED' : 'USER_SUSPENDED', 'user', String(id), { email: updated.rows[0].email, role: updated.rows[0].role });
       return updated;
     });
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "User not found" });
     }
-
-    await logAudit({
-      actorUserId: adminId,
-      action: status === "active" ? "USER_ACTIVATED" : "USER_SUSPENDED",
-      targetType: "user",
-      targetId: id as string,
-      metadata: { email: result.rows[0].email, role: result.rows[0].role },
-    });
 
     return res.status(200).json({ user: result.rows[0] });
   } catch (err) {
@@ -148,4 +141,12 @@ export async function listAuditLogs(req: AuthRequest, res: Response, next: NextF
   } catch (err) {
     return next(err);
   }
+}
+
+export async function deliveryStatus(_req: AuthRequest, res: Response) {
+  const [email, push] = await Promise.all([
+    pool.query('SELECT status, COUNT(*)::integer AS count FROM password_reset_email_jobs GROUP BY status'),
+    pool.query('SELECT status, COUNT(*)::integer AS count FROM push_delivery_jobs GROUP BY status'),
+  ]);
+  res.json({ email: email.rows, push: push.rows, pushTransport: process.env.PUSH_TRANSPORT || 'disabled', documentScannerConfigured: !!process.env.CLAMAV_HOST });
 }
