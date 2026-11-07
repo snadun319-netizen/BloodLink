@@ -10,6 +10,7 @@
     "lint": "oxlint",
     "test": "node --test tests/api.test.mjs",
     "test:browser": "node tests/dashboard-browser.mjs",
+    "test:institution-browser": "node tests/institution-browser.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
