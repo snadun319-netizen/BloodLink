@@ -36,7 +36,7 @@ export default function NotificationCard({
     return (
         <Pressable
             onPress={() => onPress(n)}
-            style={({ pressed }) => [styles.card, pressed && { opacity: 0.92 }]}
+            style={({ pressed }) => [styles.card, !n.isRead && styles.unreadCard, pressed && { opacity: 0.92 }]}
             accessibilityRole="button"
             accessibilityLabel={`${n.isRead ? '' : 'Unread. '}${n.title}`}
         >
@@ -215,13 +215,14 @@ const createStyles = (c: ColorPalette) =>
             borderColor: c.border,
             padding: 18,
         },
+        unreadCard: { borderColor: c.primarySoft, borderLeftColor: c.primary, borderLeftWidth: 3 },
         headerRow: { flexDirection: 'row', marginBottom: 12 },
         iconCircle: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
         headerText: { flex: 1, marginLeft: 14 },
-        labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-        dotLabel: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+        labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, gap: 8 },
+        dotLabel: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
         dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary },
-        labelText: { fontSize: 14, fontWeight: '800', color: c.primary },
+        labelText: { flexShrink: 1, fontSize: 14, fontWeight: '800', color: c.primary },
         pill: {
             flexDirection: 'row',
             alignItems: 'center',

@@ -6,7 +6,7 @@ export type NotificationKind =
     | 'community_impact' // badges / milestones
     | 'profile_synced'; // system message
 
-// Used by the filter chips: All / Doctor Reports / Urgent Alerts / System
+// Used by the notification filters: All / Health Reports / Urgent Alerts / Other Updates
 export type NotificationCategory = 'urgent' | 'doctor' | 'system';
 
 export interface LabReport {

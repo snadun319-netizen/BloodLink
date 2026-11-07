@@ -14,7 +14,7 @@ interface KindConfig {
 }
 
 export const KIND_CONFIG: Record<NotificationKind, KindConfig> = {
-    critical_need: { icon: 'asterisk', label: 'CRITICAL NEED', labelStyle: 'dot', tone: 'primary', category: 'urgent' },
+    critical_need: { icon: 'asterisk', label: 'Urgent blood request', labelStyle: 'dot', tone: 'primary', category: 'urgent' },
     lab_result: { icon: 'shield-check', label: 'Lab Results', labelStyle: 'dot', tone: 'primary', category: 'doctor' },
     health_advisory: { icon: 'stethoscope', label: 'Health Advisory', labelStyle: 'pill', tone: 'info', category: 'doctor' },
     community_impact: { icon: 'medal', label: 'Community Impact', labelStyle: 'dot', tone: 'primary', category: 'system' },
@@ -23,7 +23,7 @@ export const KIND_CONFIG: Record<NotificationKind, KindConfig> = {
 
 export const FILTERS: { key: 'all' | NotificationCategory; label: string }[] = [
     { key: 'all', label: 'All' },
-    { key: 'doctor', label: 'Doctor Reports' },
+    { key: 'doctor', label: 'Health Reports' },
     { key: 'urgent', label: 'Urgent Alerts' },
-    { key: 'system', label: 'System' },
+    { key: 'system', label: 'Other Updates' },
 ];
