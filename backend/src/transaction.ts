@@ -1,8 +1,8 @@
-import { PoolClient } from "pg";
+import { PoolClient, Pool } from "pg";
 import { pool } from "./db";
 
-export async function transaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
-  const client = await pool.connect();
+export async function transaction<T>(work: (client: PoolClient) => Promise<T>, database: Pool = pool): Promise<T> {
+  const client = await database.connect();
   try {
     await client.query("BEGIN");
     const result = await work(client);

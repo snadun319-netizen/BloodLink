@@ -9,11 +9,14 @@ export function sanitizePhone(phone: string): string {
   if (/^94\d{9}$/.test(cleaned)) return `+${cleaned}`;
   return cleaned;
 }
-export function text(value: unknown, field: string, max = 255): string {
-  if (typeof value !== "string" || !value.trim() || value.length > max || /[\x00-\x1f\x7f<>]/.test(value)) {
+export function text(value: unknown, field: string, max = 255, allowEmpty = false): string {
+  if (typeof value !== "string" || (!allowEmpty && !value.trim()) || value.length > max || /[\x00-\x1f\x7f<>]/.test(value)) {
     throw new HttpError(400, "Invalid " + field);
   }
   return value.trim();
+}
+export function optionalText(value: unknown, field: string, max = 255): string {
+  return text(value ?? '', field, max, true);
 }
 export function emailValue(value: unknown): string {
   const email = sanitizeEmail(text(value, "email"));
@@ -33,6 +36,7 @@ export function positiveId(value: unknown): number {
 }
 export function documentValue(value: unknown): string {
   const document = text(value, "document URL", 2048);
+  if (/^\/api\/documents\/[a-f0-9-]{36}$/i.test(document)) return document;
   if (/^uploads\/[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9]+)?$/.test(document)) return document;
   try {
     const url = new URL(document);
@@ -65,6 +69,8 @@ function validate(work: (req: Request) => void): RequestHandler {
   };
 }
 export const validateJsonBody: RequestHandler = (req, res, next) => {
+  // Match Express's default case-insensitive, optional-trailing-slash routing.
+  if (req.method === 'POST' && /^\/api\/donors\/me\/verification-documents\/?$/i.test(req.path) && req.is('multipart/form-data')) return next();
   if (["POST", "PUT", "PATCH"].includes(req.method) && (!req.body || typeof req.body !== "object" || Array.isArray(req.body))) {
     return res.status(400).json({ error: "A JSON object is required" });
   }

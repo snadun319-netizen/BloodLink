@@ -3,6 +3,7 @@ import { Response, NextFunction } from "express";
 import { pool } from "../db";
 import { hashPassword } from "../services/password.service";
 import { logAudit } from "../services/audit.service";
+import { transaction } from '../transaction';
 
 export async function registerStaff(req: AuthRequest, res: Response, next: NextFunction) {
   const { email, password, role, organizationId } = req.body;
@@ -83,7 +84,8 @@ export async function approveStaff(req: AuthRequest, res: Response, next: NextFu
   const adminId = req.user!.id;
 
   try {
-    const result = await pool.query(
+    const result = await transaction(async client => {
+      const updated = await client.query(
       `UPDATE users
        SET status = 'active'
        WHERE id = $1 AND status = 'suspended' AND role IN ('hospital_staff', 'bloodbank_staff')
@@ -91,21 +93,17 @@ export async function approveStaff(req: AuthRequest, res: Response, next: NextFu
            AND o.type = CASE users.role WHEN 'hospital_staff' THEN 'hospital' ELSE 'bloodbank' END)
        RETURNING id, email, role, status`,
       [id],
-    );
+      );
+      if (updated.rows.length) await logAudit({ actorUserId: adminId, action: 'STAFF_APPROVED', targetType: 'user', targetId: id as string,
+        metadata: { email: updated.rows[0].email, role: updated.rows[0].role } }, client);
+      return updated;
+    });
 
     if (result.rows.length === 0) {
       return res
         .status(404)
         .json({ error: "Staff member not found or already processed" });
     }
-
-    await logAudit({
-      actorUserId: adminId,
-      action: "STAFF_APPROVED",
-      targetType: "user",
-      targetId: id as string,
-      metadata: { email: result.rows[0].email, role: result.rows[0].role },
-    });
 
     return res.status(200).json({ user: result.rows[0] });
   } catch (err) {
@@ -118,26 +116,23 @@ export async function rejectStaff(req: AuthRequest, res: Response, next: NextFun
   const adminId = req.user!.id;
 
   try {
-    const result = await pool.query(
+    const result = await transaction(async client => {
+      const updated = await client.query(
       `DELETE FROM users
        WHERE id = $1 AND status = 'suspended' AND role IN ('hospital_staff', 'bloodbank_staff')
        RETURNING id, email`,
       [id],
-    );
+      );
+      if (updated.rows.length) await logAudit({ actorUserId: adminId, action: 'STAFF_REJECTED', targetType: 'user', targetId: id as string,
+        metadata: { email: updated.rows[0].email } }, client);
+      return updated;
+    });
 
     if (result.rows.length === 0) {
       return res
         .status(404)
         .json({ error: "Staff member not found or already processed" });
     }
-
-    await logAudit({
-      actorUserId: adminId,
-      action: "STAFF_REJECTED",
-      targetType: "user",
-      targetId: id as string,
-      metadata: { email: result.rows[0].email },
-    });
 
     return res
       .status(200)

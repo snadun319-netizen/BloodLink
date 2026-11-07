@@ -1,4 +1,12 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { Options } from "express-rate-limit";
+import { PostgresRateLimitStore } from "../services/rateLimit.store";
+
+const limiter = (scope: string, options: Partial<Options>) => rateLimit({ ...options,
+  ...(process.env.NODE_ENV === "production" || process.env.RATE_LIMIT_STORE === "postgres" ? { store: new PostgresRateLimitStore(scope) } : {}),
+});
+
+export const uploadLimiter = limiter("uploadLimiter", { windowMs: 60 * 60 * 1000, limit: 10,
+  standardHeaders: true, legacyHeaders: false, message: { error: 'Document upload limit reached. Try again later.' } });
 
 /**
  * Rate limiter configurations for auth endpoints.
@@ -10,7 +18,7 @@ import rateLimit from "express-rate-limit";
  * - 10 attempts per 15 minutes per IP
  * - Prevents brute-force password attacks
  */
-export const loginLimiter = rateLimit({
+export const loginLimiter = limiter("loginLimiter", {
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
   message: {
@@ -27,7 +35,7 @@ export const loginLimiter = rateLimit({
  * - 5 registration attempts per hour per IP
  * - Prevents mass account creation
  */
-export const registerLimiter = rateLimit({
+export const registerLimiter = limiter("registerLimiter", {
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,
   message: {
@@ -42,7 +50,7 @@ export const registerLimiter = rateLimit({
  * - 3 requests per 15 minutes per IP
  * - Prevents OTP spam / email bombing
  */
-export const forgotPasswordLimiter = rateLimit({
+export const forgotPasswordLimiter = limiter("forgotPasswordLimiter", {
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 3,
   message: {
@@ -58,7 +66,7 @@ export const forgotPasswordLimiter = rateLimit({
  * - 10 attempts per 15 minutes per IP
  * - Prevents OTP brute-forcing
  */
-export const otpVerifyLimiter = rateLimit({
+export const otpVerifyLimiter = limiter("otpVerifyLimiter", {
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 10,
   message: {
@@ -73,7 +81,7 @@ export const otpVerifyLimiter = rateLimit({
  * - 5 sends per 15 minutes per IP
  * - Prevents OTP flooding
  */
-export const otpSendLimiter = rateLimit({
+export const otpSendLimiter = limiter("otpSendLimiter", {
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5,
   message: {
@@ -88,7 +96,7 @@ export const otpSendLimiter = rateLimit({
  * - 100 requests per 15 minutes per IP
  * - Single-process request throttling
  */
-export const generalLimiter = rateLimit({
+export const generalLimiter = limiter("generalLimiter", {
   windowMs: 15 * 60 * 1000,
   max: 100,
   message: {

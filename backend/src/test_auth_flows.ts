@@ -8,7 +8,7 @@ import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 
 dotenv.config();
-const configured = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+const configured = process.env.TEST_DATABASE_URL || process.env.MIGRATION_DATABASE_URL || process.env.DATABASE_URL;
 if (!configured) throw new Error("Set TEST_DATABASE_URL to a PostgreSQL account with CREATEDB permission");
 const url = new URL(configured);
 if (!process.env.TEST_DATABASE_URL && !["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) throw new Error("Remote tests require explicit TEST_DATABASE_URL");
@@ -35,12 +35,20 @@ async function main() {
   url.pathname = "/" + testName;
   process.env.DATABASE_URL = url.toString();
   process.env.NODE_ENV = "test"; process.env.EMAIL_TRANSPORT = "console";
+  process.env.RATE_LIMIT_STORE = 'memory';
   process.env.JWT_ACCESS_SECRET = crypto.randomBytes(48).toString("hex");
   process.env.JWT_REFRESH_SECRET = crypto.randomBytes(48).toString("hex");
   delete process.env.TRUST_PROXY; delete process.env.SMTP_HOST;
   pool = (await import("./db")).pool;
   const db = pool;
   const { runMigrations } = await import("./migrate");
+  const migrationNames = fs.readdirSync(path.resolve(__dirname, "../../database"))
+    .filter(name => /^migration_\d+.*\.sql$/.test(name)).sort();
+  async function checkMigrations(message: string) {
+    const applied = (await db.query("SELECT name FROM schema_migrations ORDER BY name")).rows.map(row => row.name);
+    assert.deepEqual(applied, migrationNames);
+    check(true, message);
+  }
   const schema = fs.readFileSync(path.resolve(__dirname, "../../database/schema.sql"), "utf8");
   await db.query(schema.split("-- Baseline hardening")[0].replaceAll("TIMESTAMPTZ", "TIMESTAMP"));
   await db.query("INSERT INTO registration_otps (identifier, identifier_type, otp_hash, expires_at, verified_at) VALUES ('legacy@example.com', 'email', 'legacy', NOW() + INTERVAL '1 hour', NOW()), ('legacy@example.com', 'email', 'legacy', NOW() + INTERVAL '1 hour', NULL)");
@@ -52,10 +60,10 @@ async function main() {
   check((await db.query("SELECT used_at FROM password_reset_tokens WHERE user_id = $1", [legacyUser.id])).rows[0].used_at, "Upgrade invalidates old numeric reset grants");
   check((await db.query("SELECT is_revoked FROM refresh_tokens WHERE user_id = $1", [legacyUser.id])).rows[0].is_revoked, "Upgrade revokes old sessions");
   check((await db.query("SELECT password_hash FROM users WHERE id = $1", [legacyUser.id])).rows[0].password_hash === "preserved-password-hash", "Upgrade preserves existing users and password hashes");
-  check((await db.query("SELECT COUNT(*) FROM schema_migrations")).rows[0].count === "5", "Legacy upgrade records all migrations");
+  await checkMigrations("Legacy upgrade records all migrations");
   check((await db.query("SELECT data_type FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'locked_until'")).rows[0].data_type === "timestamp with time zone", "Legacy timestamps migrate to timezone-aware values");
   await runMigrations();
-  check((await db.query("SELECT COUNT(*) FROM schema_migrations")).rows[0].count === "5", "Migration runner is repeatable");
+  await checkMigrations("Migration runner is repeatable");
   await assert.rejects(() => runMigrations(true)); passed++;
   url.pathname = "/" + names[1];
   fresh = new Pool({ connectionString: url.toString() }); await fresh.query(schema);
@@ -231,9 +239,13 @@ async function main() {
   check((await api("/api/admin/audit-logs?action=DELETED_ACTOR_TEST", undefined, adminToken)).data.logs.some((log: any) => log.id === oldAudit.id), "Deleted actors remain visible in audit history");
   check((await api("/api/admin/users/bad/status", { status: "active" }, adminToken, "PATCH")).status === 400, "Invalid IDs return 400");
   const donorToken = (await issueTokenPair({ id: String(id), role: "donor", orgId: null })).accessToken;
-  const submitted = await api("/api/donors/submit", { documentUrl: "https://example.com/proof.pdf", claimedBloodGroup: "O+" }, donorToken);
+  const privateDocumentId = crypto.randomUUID();
+  await db.query("INSERT INTO verification_documents(id, owner_id, file_name, mime_type, content) VALUES ($1, $2, 'proof.pdf', 'application/pdf', $3)", [privateDocumentId, id, Buffer.from('%PDF-1.4\n%%EOF')]);
+  const privateDocumentUrl = '/api/documents/' + privateDocumentId;
+  check((await api('/api/donors/submit', { documentUrl: 'https://example.com/proof.pdf', claimedBloodGroup: 'O+' }, donorToken)).status === 400, 'Medical evidence must use private owned storage');
+  const submitted = await api("/api/donors/submit", { documentUrl: privateDocumentUrl, claimedBloodGroup: "O+" }, donorToken);
   check(submitted.status === 201, "Donor document submission succeeds");
-  check((await api("/api/donors/submit", { documentUrl: "https://example.com/second.pdf", claimedBloodGroup: "O+" }, donorToken)).status === 409, "Duplicate pending verification rejected");
+  check((await api("/api/donors/submit", { documentUrl: privateDocumentUrl, claimedBloodGroup: "O+" }, donorToken)).status === 409, "Duplicate pending verification rejected");
   check((await api("/api/donors/admin/pending", undefined, adminToken)).status === 200, "Admin can list pending reviews");
   check((await api("/api/donors/admin/" + submitted.data.verification.id + "/approve", {}, adminToken, "PATCH")).status === 200, "Admin approval succeeds");
   const verifiedProfile = (await db.query("SELECT blood_group, blood_group_verified FROM donor_profiles WHERE user_id = $1", [id])).rows[0];
@@ -262,6 +274,7 @@ async function main() {
   check((await api("/api/admin/organizations")).status === 401, "Anonymous visitors cannot inspect the institution directory");
   check((await api("/api/admin/organizations", undefined, donorToken)).status === 403, "Donors cannot inspect the institution directory");
   const bankInput = { name: "Network Test Blood Bank", type: "bloodbank", district: "Ratnapura", address: "Test address", contactPhone: "0771231234", contactEmail: "CONTACT@EXAMPLE.COM", latitude: 6.68, longitude: 80.4 };
+  const initialNetwork = (await api("/api/admin/network-overview", undefined, adminToken)).data;
   const bankCreated = await api("/api/admin/organizations", bankInput, adminToken, "POST");
   check(bankCreated.status === 201 && bankCreated.data.organization.verification_status === "pending", "Admin creates pending blood bank");
   const bankId = bankCreated.data.organization.id;
@@ -283,7 +296,7 @@ async function main() {
   const directoryEntry = bankDirectory.data.organizations.find((bank: any) => bank.id === bankId);
   check(directoryEntry.total_units === 11 && directoryEntry.staff_count === 1 && directoryEntry.critical_groups === 1, "Directory aggregates stock and staff independently");
   const networkStats = await api("/api/admin/network-overview", undefined, adminToken);
-  check(networkStats.data.total_banks === 1 && networkStats.data.active_banks === 1 && networkStats.data.critical_groups === 1, "Network overview counts blood banks and critical stock");
+  check(networkStats.data.total_banks === initialNetwork.total_banks + 1 && networkStats.data.active_banks === initialNetwork.active_banks + 1 && networkStats.data.critical_groups === initialNetwork.critical_groups + 1, "Network overview counts blood banks and critical stock");
   const bankDetail = await api(`/api/admin/organizations/${bankId}`, undefined, adminToken);
   check(bankDetail.data.stock.length === 2 && bankDetail.data.staff.length === 1 && !JSON.stringify(bankDetail.data).includes("password_hash"), "Bank detail returns scoped stock and safe staff records");
   check((await api("/api/admin/organizations/2147483647", undefined, adminToken)).status === 404, "Unknown institution returns 404");
@@ -452,4 +465,3 @@ main().catch(error => { console.error("Test failed:", error); process.exitCode =
   for (const name of created.reverse()) await admin.query('DROP DATABASE "' + name + '" WITH (FORCE)');
   await admin.end();
 });
-
