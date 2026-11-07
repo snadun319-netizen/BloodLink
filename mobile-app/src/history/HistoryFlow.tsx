@@ -5,27 +5,39 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { DonorTab } from '../components/DonorBottomNav';
 import { ThemeProvider, useTheme } from '../profile/theme';
 import { useDonationHistory } from './hooks/useDonationHistory';
 import HistoryScreen from './screens/HistoryScreen';
 
-function Inner() {
+interface Props {
+  onBack?: () => void;
+  onNavigateTab?: (tab: DonorTab) => void;
+  onNavigateToProfile?: () => void;
+}
+
+function Inner({ onBack, onNavigateTab, onNavigateToProfile }: Props) {
   const { isDark, colors } = useTheme();
   const state = useDonationHistory();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <HistoryScreen state={state} />
+      <HistoryScreen
+        state={state}
+        onBack={onBack}
+        onNavigateTab={onNavigateTab}
+        onNavigateToProfile={onNavigateToProfile}
+      />
     </View>
   );
 }
 
-export default function HistoryFlow() {
+export default function HistoryFlow(props: Props) {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <Inner />
+      <ThemeProvider forceLight={true}>
+        <Inner {...props} />
       </ThemeProvider>
     </SafeAreaProvider>
   );

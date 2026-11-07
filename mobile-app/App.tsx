@@ -174,7 +174,7 @@ export default function App() {
           <HomeScreen
             initialTab={homeTab}
             onNavigateToRequests={() => setCurrentScreen('Requests')}
-            onNavigateToHistory={() => setCurrentScreen('History')}
+            onNavigateToHistory={() => { setHomeTab('History'); setCurrentScreen('History'); }}
             onNavigateToProfile={() => setCurrentScreen('Profile')}
             onLogout={() => { setHomeTab('Home'); setCurrentScreen('Login'); }}
             onOpenNotifications={() => setCurrentScreen('Notifications')}
@@ -251,7 +251,19 @@ export default function App() {
         );
 
       case 'History':
-        return <HistoryFlow />;
+        return (
+          <HistoryFlow
+            onBack={() => { setHomeTab('Home'); setCurrentScreen('Home'); }}
+            onNavigateTab={(tab) => {
+              setHomeTab(tab);
+              if (tab === 'Home') setCurrentScreen('Home');
+              else if (tab === 'Requests') setCurrentScreen('Requests');
+              else if (tab === 'Profile') setCurrentScreen('Profile');
+              else if (tab === 'History') setCurrentScreen('History');
+            }}
+            onNavigateToProfile={() => setCurrentScreen('Profile')}
+          />
+        );
 
       case 'Notifications':
         return <NotificationsFlow onBack={() => setCurrentScreen('Home')} />;

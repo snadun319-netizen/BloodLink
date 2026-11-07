@@ -11,17 +11,23 @@ interface ThemeValue {
 
 const ThemeContext = createContext<ThemeValue | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({ children, forceLight }: { children: ReactNode; forceLight?: boolean }) {
     const system = useColorScheme();
     const [isDark, setIsDark] = useState<boolean>(system === 'dark');
 
+    const effectiveIsDark = forceLight ? false : isDark;
+
     const value = useMemo<ThemeValue>(
         () => ({
-            colors: isDark ? darkColors : lightColors,
-            isDark,
-            toggleTheme: () => setIsDark((prev) => !prev),
+            colors: effectiveIsDark ? darkColors : lightColors,
+            isDark: effectiveIsDark,
+            toggleTheme: () => {
+                if (!forceLight) {
+                    setIsDark((prev) => !prev);
+                }
+            },
         }),
-        [isDark],
+        [effectiveIsDark, forceLight],
     );
 
     return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
