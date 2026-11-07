@@ -21,7 +21,7 @@ export async function listNetworkOrganizations(req: AuthRequest, res: Response) 
       (SELECT COUNT(*)::integer FROM users u WHERE u.organization_id = o.id AND u.role IN ('hospital_staff', 'bloodbank_staff')) AS staff_count,
       (SELECT COALESCE(SUM(s.available_units), 0)::integer FROM blood_stocks s WHERE s.organization_id = o.id) AS total_units,
       (SELECT COUNT(*)::integer FROM blood_stocks s WHERE s.organization_id = o.id AND s.status = 'Critical') AS critical_groups,
-      (SELECT COUNT(*)::integer FROM blood_requests r WHERE r.organization_id = o.id AND r.status = 'Active') AS active_requests
+      (SELECT COUNT(*)::integer FROM blood_requests r WHERE r.organization_id = o.id AND r.status = 'Active' AND r.approval_status = 'Approved') AS active_requests
     FROM organizations o ORDER BY o.created_at DESC, o.id DESC`);
   res.json({ organizations: result.rows });
 }
@@ -32,7 +32,7 @@ export async function networkOverview(req: AuthRequest, res: Response) {
     (SELECT COUNT(*)::integer FROM organizations WHERE type = 'bloodbank' AND verification_status = 'approved' AND is_active) AS active_banks,
     (SELECT COUNT(*)::integer FROM organizations WHERE type = 'bloodbank' AND verification_status = 'pending') AS pending_banks,
     (SELECT COUNT(*)::integer FROM blood_stocks s JOIN organizations o ON o.id = s.organization_id WHERE o.type = 'bloodbank' AND o.verification_status = 'approved' AND o.is_active AND s.status = 'Critical') AS critical_groups,
-    (SELECT COUNT(*)::integer FROM blood_requests r JOIN organizations o ON o.id = r.organization_id WHERE o.type = 'bloodbank' AND o.verification_status = 'approved' AND o.is_active AND r.status = 'Active') AS active_requests,
+    (SELECT COUNT(*)::integer FROM blood_requests r JOIN organizations o ON o.id = r.organization_id WHERE o.type = 'bloodbank' AND o.verification_status = 'approved' AND o.is_active AND r.status = 'Active' AND r.approval_status = 'Approved') AS active_requests,
     (SELECT COALESCE(json_agg(stock), '[]'::json) FROM (
       SELECT s.blood_group, SUM(s.available_units)::integer AS units
       FROM blood_stocks s JOIN organizations o ON o.id = s.organization_id
@@ -48,7 +48,7 @@ export async function networkOrganizationDetails(req: AuthRequest, res: Response
   const [stock, staff, requests] = await Promise.all([
     pool.query("SELECT blood_group, available_units, status, updated_at FROM blood_stocks WHERE organization_id = $1 ORDER BY blood_group", [req.params.id]),
     pool.query("SELECT id, email, role, status, created_at FROM users WHERE organization_id = $1 ORDER BY id", [req.params.id]),
-    pool.query("SELECT id, blood_group, required_units, priority, created_at FROM blood_requests WHERE organization_id = $1 AND status = 'Active' ORDER BY created_at DESC", [req.params.id]),
+    pool.query("SELECT id, blood_group, required_units, priority, created_at FROM blood_requests WHERE organization_id = $1 AND status = 'Active' AND approval_status = 'Approved' ORDER BY created_at DESC", [req.params.id]),
   ]);
   res.json({ organization, stock: stock.rows, staff: staff.rows, requests: requests.rows });
 }
