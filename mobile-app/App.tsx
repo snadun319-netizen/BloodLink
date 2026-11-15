@@ -26,6 +26,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import HistoryFlow from './src/history/HistoryFlow';
 import RequestsFlow from './src/requests/RequestsFlow';
 import NotificationsFlow from './src/notifications/NotificationsFlow';
+import BanksFlow from './src/banks/BanksFlow';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenName>('Splash');
@@ -174,6 +175,7 @@ export default function App() {
           <HomeScreen
             initialTab={homeTab}
             onNavigateToRequests={() => setCurrentScreen('Requests')}
+            onNavigateToBanks={() => { setHomeTab('Banks'); setCurrentScreen('Banks'); }}
             onNavigateToHistory={() => { setHomeTab('History'); setCurrentScreen('History'); }}
             onNavigateToProfile={() => setCurrentScreen('Profile')}
             onLogout={() => { setHomeTab('Home'); setCurrentScreen('Login'); }}
@@ -188,6 +190,7 @@ export default function App() {
             onNavigateTab={(tab) => {
               setHomeTab(tab);
               if (tab === 'Home') setCurrentScreen('Home');
+              else if (tab === 'Banks') setCurrentScreen('Banks');
               else if (tab === 'Profile') setCurrentScreen('Profile');
               else if (tab === 'History') setCurrentScreen('History');
               else if (tab === 'Requests') setCurrentScreen('Requests');
@@ -241,6 +244,7 @@ export default function App() {
             onNavigateTab={(tab) => {
               setHomeTab(tab);
               if (tab === 'Home') setCurrentScreen('Home');
+              else if (tab === 'Banks') setCurrentScreen('Banks');
               else if (tab === 'Requests') setCurrentScreen('Requests');
               else if (tab === 'History') setCurrentScreen('History');
               else if (tab === 'Profile') setCurrentScreen('Profile');
@@ -257,9 +261,26 @@ export default function App() {
             onNavigateTab={(tab) => {
               setHomeTab(tab);
               if (tab === 'Home') setCurrentScreen('Home');
+              else if (tab === 'Banks') setCurrentScreen('Banks');
               else if (tab === 'Requests') setCurrentScreen('Requests');
               else if (tab === 'Profile') setCurrentScreen('Profile');
               else if (tab === 'History') setCurrentScreen('History');
+            }}
+            onNavigateToProfile={() => setCurrentScreen('Profile')}
+          />
+        );
+
+      case 'Banks':
+        return (
+          <BanksFlow
+            onBack={() => { setHomeTab('Home'); setCurrentScreen('Home'); }}
+            onNavigateTab={(tab) => {
+              setHomeTab(tab);
+              if (tab === 'Home') setCurrentScreen('Home');
+              else if (tab === 'Requests') setCurrentScreen('Requests');
+              else if (tab === 'Profile') setCurrentScreen('Profile');
+              else if (tab === 'History') setCurrentScreen('History');
+              else if (tab === 'Banks') setCurrentScreen('Banks');
             }}
             onNavigateToProfile={() => setCurrentScreen('Profile')}
           />
