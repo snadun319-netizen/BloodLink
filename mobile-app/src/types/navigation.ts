@@ -15,6 +15,7 @@ export type ScreenName =
   | 'Home'
   | 'History'
   | 'Requests'
+  | 'Banks'
   | 'Notifications';
 
 export interface RegistrationData {
