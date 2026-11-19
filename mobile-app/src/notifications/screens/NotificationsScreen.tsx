@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { ColorPalette, radius, useTheme } from '../../profile/theme';
-import { FilterChips, NotificationCard } from '../components';
+import { FilterChips, GuidelinesModal, NotificationCard } from '../components';
 import { NotificationsState } from '../hooks/useNotifications';
 import { AppNotification } from '../types/notifications';
 import { FILTERS } from '../utils/kindConfig';
@@ -53,6 +53,7 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
     const { items, unreadCount, loading, refreshing, error } = state;
     const { user } = useAuth();
     const [filter, setFilter] = useState<string>('all');
+    const [guidelinesVisible, setGuidelinesVisible] = useState(false);
 
     const chips = useMemo(
         () =>
@@ -140,10 +141,10 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
                 </View>
             ) : error && items.length === 0 ? (
                 <View style={styles.center}>
-                    <Text style={styles.errorTitle}>Could not load notifications</Text>
-                    <Text style={styles.errorText}>{error}</Text>
+                    <Text style={styles.errorTitle} maxFontSizeMultiplier={1.2}>Could not load notifications</Text>
+                    <Text style={styles.errorText} maxFontSizeMultiplier={1.2}>{error}</Text>
                     <Pressable style={styles.retry} onPress={state.reload} accessibilityRole="button">
-                        <Text style={styles.retryText}>Try again</Text>
+                        <Text style={styles.retryText} maxFontSizeMultiplier={1.2}>Try again</Text>
                     </Pressable>
                 </View>
             ) : (
@@ -159,8 +160,8 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
                         {visible.length === 0 ? (
                             <View style={styles.empty}>
                                 <Ionicons name="notifications-off-outline" size={36} color={colors.textMuted} />
-                                <Text style={styles.emptyTitle}>No notifications here</Text>
-                                <Text style={styles.emptyText}>New alerts and updates will appear in this list.</Text>
+                                <Text style={styles.emptyTitle} maxFontSizeMultiplier={1.2}>No notifications here</Text>
+                                <Text style={styles.emptyText} maxFontSizeMultiplier={1.2}>New alerts and updates will appear in this list.</Text>
                             </View>
                         ) : (
                             visible.map((n) => (
@@ -179,7 +180,7 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
                                     }}
                                     onViewGuidelines={(item) => {
                                         state.markRead(item.id);
-                                        openUrl(item.guidelinesUrl, 'Donation guidelines will be available once the backend is connected.');
+                                        setGuidelinesVisible(true);
                                     }}
                                     onShareHonor={handleShare}
                                 />
@@ -188,6 +189,11 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
                     </ScrollView>
                 </>
             )}
+
+            <GuidelinesModal
+                visible={guidelinesVisible}
+                onClose={() => setGuidelinesVisible(false)}
+            />
         </SafeAreaView>
     );
 }
@@ -220,8 +226,9 @@ const createStyles = (c: ColorPalette) =>
             minWidth: 0,
         },
         title: {
-            fontSize: 24,
+            fontSize: 28,
             fontWeight: '800',
+            letterSpacing: -0.5,
             color: c.text,
             flexShrink: 1,
         },
@@ -235,6 +242,7 @@ const createStyles = (c: ColorPalette) =>
             backgroundColor: c.card,
             borderWidth: 1,
             borderColor: c.border,
+            flexShrink: 0,
         },
         markAllText: {
             color: c.primary,
