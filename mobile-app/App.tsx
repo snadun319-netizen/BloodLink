@@ -287,7 +287,15 @@ export default function App() {
         );
 
       case 'Notifications':
-        return <NotificationsFlow onBack={() => setCurrentScreen('Home')} />;
+        return (
+          <NotificationsFlow
+            onBack={() => setCurrentScreen('Home')}
+            onViewRequest={() => {
+              setHomeTab('Requests');
+              setCurrentScreen('Requests');
+            }}
+          />
+        );
 
       default:
         return (
