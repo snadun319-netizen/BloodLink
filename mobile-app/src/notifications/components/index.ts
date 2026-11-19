@@ -2,3 +2,4 @@
 export { default as FilterChips } from './FilterChips';
 export type { FilterChip } from './FilterChips';
 export { default as NotificationCard } from './NotificationCard';
+export { default as GuidelinesModal } from './GuidelinesModal';
