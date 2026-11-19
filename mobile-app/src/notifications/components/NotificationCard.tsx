@@ -52,25 +52,25 @@ export default function NotificationCard({
                             cfg.labelStyle === 'pill' ? (
                                 <View style={styles.pill}>
                                     <MaterialCommunityIcons name="check-decagram-outline" size={14} color={colors.primary} />
-                                    <Text style={styles.pillText}>{cfg.label}</Text>
+                                    <Text style={styles.pillText} maxFontSizeMultiplier={1.2}>{cfg.label}</Text>
                                 </View>
                             ) : (
                                 <View style={styles.dotLabel}>
                                     {!n.isRead && <View style={styles.dot} />}
-                                    <Text style={styles.labelText}>{cfg.label}</Text>
+                                    <Text style={styles.labelText} maxFontSizeMultiplier={1.2}>{cfg.label}</Text>
                                 </View>
                             )
                         ) : (
                             <View />
                         )}
-                        <Text style={styles.time}>{timeAgo(n.createdAt)}</Text>
+                        <Text style={styles.time} maxFontSizeMultiplier={1.2}>{timeAgo(n.createdAt)}</Text>
                     </View>
 
-                    <Text style={styles.title} numberOfLines={2}>
+                    <Text style={styles.title} numberOfLines={2} maxFontSizeMultiplier={1.2}>
                         {n.title}
                     </Text>
                     {n.subtitle ? (
-                        <Text style={styles.subtitle} numberOfLines={1}>
+                        <Text style={styles.subtitle} numberOfLines={1} maxFontSizeMultiplier={1.2}>
                             {n.subtitle}
                         </Text>
                     ) : null}
@@ -79,9 +79,9 @@ export default function NotificationCard({
 
             {/* Body */}
             {n.kind === 'community_impact' ? (
-                n.body ? <Text style={styles.bodyBold}>{n.body}</Text> : null
+                n.body ? <Text style={styles.bodyBold} maxFontSizeMultiplier={1.2}>{n.body}</Text> : null
             ) : n.body ? (
-                <Text style={styles.body}>{n.body}</Text>
+                <Text style={styles.body} maxFontSizeMultiplier={1.2}>{n.body}</Text>
             ) : null}
 
             {/* Critical need footer */}
@@ -89,7 +89,7 @@ export default function NotificationCard({
                 <View style={styles.footerRow}>
                     <View style={styles.distance}>
                         <MaterialCommunityIcons name="map-marker-outline" size={18} color={colors.textMuted} />
-                        <Text style={styles.distanceText} numberOfLines={1}>
+                        <Text style={styles.distanceText} numberOfLines={1} maxFontSizeMultiplier={1.2}>
                             {n.distanceKm !== undefined ? `${n.distanceKm} km away` : 'Nearby'}
                             {n.location ? ` · ${n.location}` : ''}
                         </Text>
@@ -100,7 +100,7 @@ export default function NotificationCard({
                         accessibilityRole="button"
                         accessibilityLabel="View request"
                     >
-                        <Text style={styles.primaryButtonText}>View Request</Text>
+                        <Text style={styles.primaryButtonText} maxFontSizeMultiplier={1.2}>View Request</Text>
                         <MaterialCommunityIcons name="arrow-right" size={16} color={colors.onPrimary} />
                     </Pressable>
                 </View>
@@ -116,25 +116,25 @@ export default function NotificationCard({
                                 size={18}
                                 color={colors.primary}
                             />
-                            <Text style={styles.infoTitle}>
+                            <Text style={styles.infoTitle} maxFontSizeMultiplier={1.2}>
                                 {n.labReport.allClear ? 'All Clinical Markers Clear' : 'Review Required'}
                             </Text>
                         </View>
-                        <Text style={styles.marker}>
-                            Hemoglobin: <Text style={styles.markerValue}>{n.labReport.hemoglobin}</Text>
+                        <Text style={styles.marker} maxFontSizeMultiplier={1.2}>
+                            Hemoglobin: <Text style={styles.markerValue} maxFontSizeMultiplier={1.2}>{n.labReport.hemoglobin}</Text>
                         </Text>
-                        <Text style={styles.marker}>
-                            HIV / HBV / HCV: <Text style={styles.markerValue}>{n.labReport.infectiousDiseases}</Text>
+                        <Text style={styles.marker} maxFontSizeMultiplier={1.2}>
+                            HIV / HBV / HCV: <Text style={styles.markerValue} maxFontSizeMultiplier={1.2}>{n.labReport.infectiousDiseases}</Text>
                         </Text>
-                        <Text style={styles.marker}>
-                            Volume: <Text style={styles.markerValue}>{n.labReport.volumeMl} mL</Text>
+                        <Text style={styles.marker} maxFontSizeMultiplier={1.2}>
+                            Volume: <Text style={styles.markerValue} maxFontSizeMultiplier={1.2}>{n.labReport.volumeMl} mL</Text>
                         </Text>
                     </View>
 
                     <View style={styles.infoBox}>
                         <View style={{ flexDirection: 'row', gap: 10 }}>
                             <MaterialCommunityIcons name="format-quote-open" size={22} color={colors.primary} />
-                            <Text style={styles.quote}>“{n.labReport.doctorMessage}”</Text>
+                            <Text style={styles.quote} maxFontSizeMultiplier={1.2}>“{n.labReport.doctorMessage}”</Text>
                         </View>
                     </View>
 
@@ -146,7 +146,7 @@ export default function NotificationCard({
                             accessibilityLabel="Open lab PDF"
                         >
                             <MaterialCommunityIcons name="file-pdf-box" size={20} color={colors.text} />
-                            <Text style={styles.secondaryButtonText}>Lab PDF</Text>
+                            <Text style={styles.secondaryButtonText} maxFontSizeMultiplier={1.2}>Lab PDF</Text>
                         </Pressable>
                         <Pressable
                             onPress={() => onOpenDoctorNote(n)}
@@ -155,7 +155,7 @@ export default function NotificationCard({
                             accessibilityLabel="Open doctor note"
                         >
                             <MaterialCommunityIcons name="clipboard-text-outline" size={20} color={colors.onPrimary} />
-                            <Text style={styles.primaryButtonText}>Doctor Note</Text>
+                            <Text style={styles.primaryButtonText} maxFontSizeMultiplier={1.2}>Doctor Note</Text>
                         </Pressable>
                     </View>
                 </>
@@ -166,7 +166,7 @@ export default function NotificationCard({
                 <View style={styles.footerRow}>
                     <View style={styles.distance}>
                         <MaterialCommunityIcons name="calendar-month-outline" size={18} color={colors.primary} />
-                        <Text style={styles.eligibleText}>
+                        <Text style={styles.eligibleText} maxFontSizeMultiplier={1.2}>
                             Eligible in: {n.eligibleInDays ?? 0} Day{n.eligibleInDays === 1 ? '' : 's'}
                         </Text>
                     </View>
@@ -176,7 +176,7 @@ export default function NotificationCard({
                         accessibilityRole="button"
                         accessibilityLabel="View guidelines"
                     >
-                        <Text style={styles.linkText}>View Guidelines</Text>
+                        <Text style={styles.linkText} maxFontSizeMultiplier={1.2}>View Guidelines</Text>
                         <MaterialCommunityIcons name="chevron-right" size={18} color={colors.primary} />
                     </Pressable>
                 </View>
@@ -189,8 +189,8 @@ export default function NotificationCard({
                         <MaterialCommunityIcons name="shield-check" size={22} color={colors.onPrimary} />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={styles.honorTitle}>{n.honor.title}</Text>
-                        <Text style={styles.honorSub}>Verified by {n.honor.verifiedBy}</Text>
+                        <Text style={styles.honorTitle} maxFontSizeMultiplier={1.2}>{n.honor.title}</Text>
+                        <Text style={styles.honorSub} maxFontSizeMultiplier={1.2}>Verified by {n.honor.verifiedBy}</Text>
                     </View>
                     <Pressable
                         onPress={() => onShareHonor(n)}
@@ -198,7 +198,7 @@ export default function NotificationCard({
                         accessibilityRole="button"
                         accessibilityLabel="Share your honor"
                     >
-                        <Text style={styles.shareText}>Share</Text>
+                        <Text style={styles.shareText} maxFontSizeMultiplier={1.2}>Share</Text>
                     </Pressable>
                 </View>
             )}
@@ -222,7 +222,7 @@ const createStyles = (c: ColorPalette) =>
         labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, gap: 8 },
         dotLabel: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
         dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: c.primary },
-        labelText: { flexShrink: 1, fontSize: 14, fontWeight: '800', color: c.primary },
+        labelText: { flexShrink: 1, fontSize: 12, fontWeight: '700', color: c.primary },
         pill: {
             flexDirection: 'row',
             alignItems: 'center',
@@ -232,16 +232,16 @@ const createStyles = (c: ColorPalette) =>
             paddingHorizontal: 10,
             paddingVertical: 4,
         },
-        pillText: { fontSize: 14, fontWeight: '700', color: c.primary },
-        time: { fontSize: 13, color: c.textMuted, fontWeight: '600' },
-        title: { fontSize: 19, fontWeight: '800', color: c.text },
-        subtitle: { fontSize: 15, color: c.textMuted, marginTop: 2 },
-        body: { fontSize: 16, lineHeight: 24, color: c.textMuted },
-        bodyBold: { fontSize: 16, lineHeight: 24, color: c.text, fontWeight: '600' },
+        pillText: { fontSize: 12, fontWeight: '700', color: c.primary },
+        time: { fontSize: 12, color: c.textMuted, fontWeight: '500' },
+        title: { fontSize: 17, fontWeight: '800', letterSpacing: -0.2, color: c.text },
+        subtitle: { fontSize: 13, fontWeight: '500', color: c.textMuted, marginTop: 2 },
+        body: { fontSize: 14, lineHeight: 21, color: c.textMuted },
+        bodyBold: { fontSize: 14, lineHeight: 21, color: c.text, fontWeight: '600' },
         footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, gap: 10 },
         distance: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
-        distanceText: { fontSize: 14, color: c.textMuted, fontWeight: '600', flexShrink: 1 },
-        eligibleText: { fontSize: 14, color: c.primary, fontWeight: '700' },
+        distanceText: { fontSize: 13, color: c.textMuted, fontWeight: '500', flexShrink: 1 },
+        eligibleText: { fontSize: 13, color: c.primary, fontWeight: '700' },
         primaryButton: {
             flexDirection: 'row',
             alignItems: 'center',
@@ -251,15 +251,15 @@ const createStyles = (c: ColorPalette) =>
             paddingHorizontal: 18,
             paddingVertical: 12,
         },
-        primaryButtonText: { color: c.onPrimary, fontWeight: '700', fontSize: 15 },
+        primaryButtonText: { color: c.onPrimary, fontWeight: '700', fontSize: 14 },
         linkButton: { flexDirection: 'row', alignItems: 'center' },
-        linkText: { color: c.primary, fontWeight: '700', fontSize: 14 },
+        linkText: { color: c.primary, fontWeight: '700', fontSize: 13.5 },
         infoBox: { backgroundColor: c.infoSoft, borderRadius: radius.md, padding: 14, marginTop: 4, marginBottom: 12 },
         infoTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-        infoTitle: { fontSize: 16, fontWeight: '800', color: c.text },
-        marker: { fontSize: 15, color: c.textMuted, marginTop: 4 },
-        markerValue: { color: c.text, fontWeight: '600' },
-        quote: { flex: 1, fontSize: 16, lineHeight: 24, color: c.text },
+        infoTitle: { fontSize: 14, fontWeight: '700', color: c.text },
+        marker: { fontSize: 13, color: c.textMuted, marginTop: 4 },
+        markerValue: { color: c.text, fontWeight: '700' },
+        quote: { flex: 1, fontSize: 13.5, lineHeight: 20, color: c.text },
         buttonRow: { flexDirection: 'row', gap: 12 },
         secondaryButton: {
             flex: 1,
@@ -269,9 +269,9 @@ const createStyles = (c: ColorPalette) =>
             gap: 8,
             backgroundColor: c.infoSoft,
             borderRadius: radius.md,
-            height: 52,
+            height: 48,
         },
-        secondaryButtonText: { fontWeight: '700', fontSize: 15, color: c.text },
+        secondaryButtonText: { fontWeight: '700', fontSize: 14, color: c.text },
         primaryButtonWide: {
             flex: 1,
             flexDirection: 'row',
@@ -280,7 +280,7 @@ const createStyles = (c: ColorPalette) =>
             gap: 8,
             backgroundColor: c.primary,
             borderRadius: radius.md,
-            height: 52,
+            height: 48,
         },
         honorBox: {
             flexDirection: 'row',
@@ -292,8 +292,8 @@ const createStyles = (c: ColorPalette) =>
             marginTop: 14,
         },
         honorIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center' },
-        honorTitle: { fontSize: 15, fontWeight: '800', color: c.text },
-        honorSub: { fontSize: 13, color: c.textMuted, marginTop: 2 },
+        honorTitle: { fontSize: 14, fontWeight: '700', color: c.text },
+        honorSub: { fontSize: 12, color: c.textMuted, marginTop: 2 },
         shareButton: { backgroundColor: c.card, borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 10 },
-        shareText: { fontWeight: '700', color: c.text, fontSize: 14 },
+        shareText: { fontWeight: '700', color: c.text, fontSize: 13.5 },
     });

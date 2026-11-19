@@ -38,12 +38,12 @@ export default function FilterChips({ filters, selected, onSelect }: Props) {
                             accessibilityState={{ selected: active }}
                             accessibilityLabel={`${f.label}${f.count ? `, ${f.count} unread` : ''}`}
                         >
-                            <Text numberOfLines={1} style={[styles.text, active && styles.textActive]}>
+                            <Text numberOfLines={1} style={[styles.text, active && styles.textActive]} maxFontSizeMultiplier={1.2}>
                                 {f.label}
                             </Text>
                             {f.count !== undefined && (
                                 <View style={[styles.count, active && styles.countActive]}>
-                                    <Text style={[styles.countText, active && styles.countTextActive]}>{f.count}</Text>
+                                    <Text style={[styles.countText, active && styles.countTextActive]} maxFontSizeMultiplier={1.2}>{f.count}</Text>
                                 </View>
                             )}
                         </Pressable>
