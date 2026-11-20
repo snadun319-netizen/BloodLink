@@ -17,9 +17,6 @@ export interface BankAccount extends Omit<Staff, 'organization_id' | 'organizati
   organization_name: string | null; organization_status: string | null; organization_active: boolean | null;
 }
 export interface AccountCredentials { email: string; password: string }
-export interface Verification {
-  id: number; donor_email: string; claimed_blood_group: string; document_url: string; created_at: string;
-}
 export interface Overview {
   total_banks: number; active_banks: number; pending_banks: number; critical_groups: number; active_requests: number;
   stock: { blood_group: string; units: number }[];
@@ -45,7 +42,7 @@ export interface Institution {
   address: string | null; contact_phone: string | null; active_requests: number; pending_requests: number; total_units: number; donations: number;
 }
 export interface HealthAlert { id: number; donor_id: number; full_name: string; phone: string | null; subject: string; message: string; sent_by_email: string; created_at: string }
-export interface Snapshot { organizations: Organization[]; accounts: BankAccount[]; verifications: Verification[]; overview: Overview; requests: BloodRequest[] }
+export interface Snapshot { organizations: Organization[]; accounts: BankAccount[]; overview: Overview; requests: BloodRequest[] }
 export function bankCode(bank: Pick<Organization, 'id'>) { return `BL-${String(bank.id).padStart(4, '0')}`; }
 export const GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 export const DISTRICTS = ['Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo', 'Galle', 'Gampaha', 'Hambantota', 'Jaffna', 'Kalutara', 'Kandy', 'Kegalle', 'Kilinochchi', 'Kurunegala', 'Mannar', 'Matale', 'Matara', 'Monaragala', 'Mullaitivu', 'Nuwara Eliya', 'Polonnaruwa', 'Puttalam', 'Ratnapura', 'Trincomalee', 'Vavuniya'];

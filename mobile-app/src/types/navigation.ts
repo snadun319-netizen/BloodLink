@@ -23,6 +23,7 @@ export interface RegistrationData {
   phone: string;
   dob: string;
   nic: string;
+  district: string;
   bloodGroup: string;
   otp: string;
   email?: string;

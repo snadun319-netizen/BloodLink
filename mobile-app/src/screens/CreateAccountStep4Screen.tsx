@@ -74,6 +74,7 @@ export const CreateAccountStep4Screen: React.FC<CreateAccountStep4ScreenProps> =
         email: cleanEmail,
         phone: formattedPhone,
         nic: registrationData.nic,
+        district: registrationData.district,
         dob: registrationData.dob || undefined,
         bloodGroup: bloodGroup || registrationData?.bloodGroup || 'A+',
         password,

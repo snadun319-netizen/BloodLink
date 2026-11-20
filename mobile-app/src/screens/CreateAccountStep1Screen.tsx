@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
@@ -20,6 +21,8 @@ import { normalizeSriLankanMobile, toLocalSriLankanMobile } from '../utils/phone
 import { BirthDatePicker } from '../components/BirthDatePicker';
 import { birthDateToString, formatBirthDateInput, getBirthDateError, latestBirthDate, parseBirthDate } from '../utils/birthDate';
 
+const DISTRICTS = ['Ampara','Anuradhapura','Badulla','Batticaloa','Colombo','Galle','Gampaha','Hambantota','Jaffna','Kalutara','Kandy','Kegalle','Kilinochchi','Kurunegala','Mannar','Matale','Matara','Monaragala','Mullaitivu','Nuwara Eliya','Polonnaruwa','Puttalam','Ratnapura','Trincomalee','Vavuniya'];
+
 interface CreateAccountStep1ScreenProps {
   onBack: () => void;
   onContinue: (data: {
@@ -28,6 +31,7 @@ interface CreateAccountStep1ScreenProps {
     phone: string;
     dob: string;
     nic: string;
+    district: string;
   }) => void;
   onSignIn: () => void;
   initialData?: {
@@ -36,6 +40,7 @@ interface CreateAccountStep1ScreenProps {
     phone?: string;
     dob?: string;
     nic?: string;
+    district?: string;
   };
 }
 
@@ -54,6 +59,8 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
   const [dobError, setDobError] = useState<string | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [nic, setNic] = useState(initialData?.nic || '');
+  const [district, setDistrict] = useState(initialData?.district || '');
+  const [showDistricts, setShowDistricts] = useState(false);
   const maximumBirthDate = latestBirthDate();
   const pickerDate = getBirthDateError(dob) ? null : parseBirthDate(dob);
 
@@ -72,13 +79,14 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
     setPhoneError(null);
     const dateError = getBirthDateError(dob);
     setDobError(dateError);
-    if (dateError) return;
+    if (dateError || !district) return;
     onContinue({
       fullName: fullName.trim(),
       email: cleanEmail,
       phone: toLocalSriLankanMobile(normalizedPhone),
       dob: dob.trim(),
       nic: nic.trim(),
+      district,
     });
   };
 
@@ -217,6 +225,14 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
               />
             </View>
 
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>District</Text>
+              <TouchableOpacity style={styles.input} onPress={() => { Keyboard.dismiss(); setShowDistricts(true); }} accessibilityRole="button" accessibilityLabel="Select your district">
+                <Text style={{ color: district ? '#0F172A' : '#94A3B8', fontSize: 14 }}>{district || 'Select your district'}</Text>
+              </TouchableOpacity>
+              {!district && <Text style={styles.phoneError} accessibilityRole="alert">Select your district to continue.</Text>}
+            </View>
+
             {/* Privacy Informational Card */}
             <View style={styles.privacyCard}>
               <View style={styles.privacyIconWrap}>
@@ -263,6 +279,14 @@ export const CreateAccountStep1Screen: React.FC<CreateAccountStep1ScreenProps> =
           }}
         />
       )}
+      <Modal visible={showDistricts} transparent animationType="slide" onRequestClose={() => setShowDistricts(false)}>
+        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: '#0006' }}>
+          <View style={{ maxHeight: '70%', backgroundColor: 'white', borderTopLeftRadius: 18, borderTopRightRadius: 18, padding: 20 }}>
+            <Text style={styles.label}>Choose your district</Text>
+            <ScrollView>{DISTRICTS.map(name => <TouchableOpacity key={name} onPress={() => { setDistrict(name); setShowDistricts(false); }} style={{ paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}><Text style={{ color: '#0F172A' }}>{name}</Text></TouchableOpacity>)}</ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

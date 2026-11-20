@@ -38,6 +38,11 @@ Donor blood groups remain unverified until an administrator approves an actual d
 Approval updates `blood_group` and `blood_group_verified` in the same transaction.
 Future matching queries must require this flag alongside availability and eligibility.
 
+`migration_010_donor_district.sql` adds donor district data for routing blood-group
+verification. The mobile signup flow now requires a district. Pending submissions are
+reviewed by the primary admin of the approved blood bank in that district. Donor document
+review is handled in the blood bank workspace.
+
 Run the API with a limited database role, not a PostgreSQL superuser. Use a separate
 migration owner and a separate CREATEDB-capable test account. Production backups, database
 TLS, document access control, retention policies, and monitoring require deployment setup.

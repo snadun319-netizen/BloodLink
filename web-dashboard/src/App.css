@@ -3,15 +3,21 @@
 }
 
 .sidebar {
+  box-sizing:border-box;
   width:242px;
+  height:100vh;
+  height:100dvh;
   background:#fff;
   border-right:1px solid var(--line);
   position:fixed;
   inset:0 auto 0 0;
   display:flex;
   flex-direction:column;
-  padding:29px 15px 16px;
+  padding:20px 15px 12px;
   z-index:25;
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
 }
 
 .brand-link {
@@ -57,7 +63,7 @@
   display:flex;
   gap:7px;
   align-items:center;
-  margin:26px 10px 30px;
+  margin:19px 10px 21px;
   font-size:10px;
   color:#727a8e;
 }
@@ -119,14 +125,14 @@
 
 .sidebar-bottom {
   margin-top:auto;
-  padding-top:50px;
+  padding-top:clamp(10px,2.5vh,24px);
 }
 
 .network-note {
   display:flex;
   align-items:flex-start;
   gap:8px;
-  margin:18px 11px 23px;
+  margin:12px 11px 16px;
   font-size:10px;
   color:#505c6e;
 }
@@ -164,7 +170,7 @@
   font-size:11px;
   color:#707a8e;
   padding:12px 10px;
-  margin-bottom:14px;
+  margin-bottom:8px;
   border-top:1px solid var(--line);
 }
 
@@ -182,7 +188,7 @@
   display:flex;
   align-items:center;
   gap:9px;
-  padding:11px 9px;
+  padding:9px;
 }
 
 .profile>div {
@@ -2170,7 +2176,7 @@ td small {
     transform:translateX(-100%);
     transition:transform .2s;
     z-index:35;
-    padding:25px 15px 15px;
+    padding:20px 15px 12px;
   }
   .sidebar-open {
     transform:translateX(0);

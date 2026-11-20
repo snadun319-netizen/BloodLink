@@ -12,7 +12,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 const MAX_FAILED_ATTEMPTS = 5;
 
 export async function register(req: Request, res: Response) {
-  const { email, password, fullName, phone, nic, bloodGroup, dob, documentUrl, registrationToken } = req.body;
+  const { email, password, fullName, phone, nic, bloodGroup, dob, district, documentUrl, registrationToken } = req.body;
   if (documentUrl) throw new HttpError(400, 'Upload a private document from your profile after registering');
   const passwordHash = await hashPassword(password);
   const result = await transaction(async client => {
@@ -24,8 +24,8 @@ export async function register(req: Request, res: Response) {
       [email, passwordHash]
     )).rows[0];
     await client.query(
-      "INSERT INTO donor_profiles (user_id, full_name, nic, phone, date_of_birth, blood_group) VALUES ($1, $2, $3, $4, $5, $6)",
-      [user.id, fullName, nic, phone, dob || null, bloodGroup]
+      "INSERT INTO donor_profiles (user_id, full_name, nic, phone, date_of_birth, blood_group, district) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+      [user.id, fullName, nic, phone, dob || null, bloodGroup, district]
     );
     // A medical verification request must reference a supplied document, not a fabricated file.
     if (documentUrl) await client.query(
@@ -39,7 +39,7 @@ export async function register(req: Request, res: Response) {
   return res.status(201).json({
     message: documentUrl ? "Registration successful. Blood group verification is pending." : "Registration successful. Submit a blood group document for verification.",
     accessToken: result.tokens.accessToken, refreshToken: result.tokens.refreshToken,
-    user: { ...result.user, fullName, bloodGroup, phone },
+    user: { ...result.user, fullName, bloodGroup, phone, district },
   });
 }
 

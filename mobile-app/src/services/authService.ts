@@ -46,6 +46,7 @@ export interface RegisterData {
   fullName: string;
   phone: string;
   nic: string;
+  district: string;
   bloodGroup: string;
   dob?: string;
   documentUrl?: string;

@@ -60,7 +60,9 @@ export async function listPendingDonorVerifications(
               dv.claimed_blood_group, dv.status, dv.created_at
        FROM donor_verifications dv
        JOIN users u ON dv.donor_id = u.id
-       WHERE dv.status = 'pending'
+       JOIN donor_profiles dp ON dp.user_id=u.id
+       WHERE dv.status = 'pending' AND NOT EXISTS (SELECT 1 FROM organizations o
+         WHERE o.type='bloodbank' AND o.is_active AND o.verification_status='approved' AND o.district=dp.district)
        ORDER BY dv.created_at ASC`,
     );
 
@@ -69,6 +71,46 @@ export async function listPendingDonorVerifications(
     return next(err);
   }
 }
+
+// Blood bank admins only see donors who selected their institution's district.
+export async function listDistrictPendingDonorVerifications(req: AuthRequest, res: Response) {
+  const result = await pool.query(`SELECT dv.id, dv.donor_id, u.email AS donor_email, dp.full_name, dp.phone,
+      dp.district, dv.document_url, dv.claimed_blood_group, dv.status, dv.created_at
+    FROM donor_verifications dv JOIN users u ON dv.donor_id = u.id
+    JOIN donor_profiles dp ON dp.user_id = u.id
+    JOIN organizations o ON o.id = $1 JOIN users reviewer ON reviewer.id=$2
+    WHERE dv.status = 'pending' AND o.type = 'bloodbank' AND o.is_active
+      AND o.verification_status = 'approved' AND dp.district = o.district
+      AND reviewer.is_bank_account AND reviewer.organization_id=o.id
+    ORDER BY dv.created_at ASC`, [req.user!.orgId, req.user!.id]);
+  res.json({ verifications: result.rows });
+}
+
+async function reviewDistrictDonorVerification(req: AuthRequest, res: Response, status: 'approved' | 'rejected') {
+  const id = req.params.id, adminId = req.user!.id, orgId = req.user!.orgId;
+  const result = await transaction(async client => {
+    const updated = await client.query(`UPDATE donor_verifications dv SET status=$1, reviewed_by=$2,
+      reviewed_at=NOW(), rejection_reason=$3 FROM donor_profiles dp, organizations o
+      WHERE dv.id=$4 AND dv.donor_id=dp.user_id AND dp.district=o.district AND o.id=$5
+      AND o.type='bloodbank' AND o.is_active AND o.verification_status='approved' AND dv.status='pending'
+      AND EXISTS(SELECT 1 FROM users reviewer WHERE reviewer.id=$2 AND reviewer.is_bank_account AND reviewer.organization_id=o.id)
+      RETURNING dv.id, dv.donor_id, dv.claimed_blood_group, dv.status, dv.rejection_reason`,
+      [status, adminId, status === 'rejected' ? req.body.reason || null : null, id, orgId]);
+    if (!updated.rowCount) throw new HttpError(404, 'Verification not found in your district or already processed');
+    const row = updated.rows[0];
+    if (status === 'approved') await client.query('UPDATE donor_profiles SET blood_group=$1,blood_group_verified=true,updated_at=NOW() WHERE user_id=$2', [row.claimed_blood_group, row.donor_id]);
+    await audit(client, req, `DONOR_VERIFICATION_${status.toUpperCase()}`, 'donor_verification', String(id), { donorId: row.donor_id, districtAdmin: true });
+    const notification = (await client.query(`INSERT INTO notifications(donor_id,title,message,kind,category,dedupe_key)
+      VALUES ($1,$2,$3,'profile_synced','system',$4) RETURNING id`, [row.donor_id,
+      status === 'approved' ? 'Blood group verified' : 'Document review completed',
+      status === 'approved' ? 'Your district blood bank has approved your blood group document.' : 'Your verification document needs attention. Open your profile to view the review.', `verification:${id}`])).rows[0];
+    await queueNotificationPush(client, [notification.id]);
+    return row;
+  });
+  res.json({ verification: result });
+}
+export async function approveDistrictDonorVerification(req: AuthRequest, res: Response) { return reviewDistrictDonorVerification(req, res, 'approved'); }
+export async function rejectDistrictDonorVerification(req: AuthRequest, res: Response) { return reviewDistrictDonorVerification(req, res, 'rejected'); }
 
 export async function approveDonorVerification(req: AuthRequest, res: Response, next: NextFunction) {
   const { id } = req.params;
@@ -79,7 +121,9 @@ export async function approveDonorVerification(req: AuthRequest, res: Response, 
       const updated = await client.query(
       `UPDATE donor_verifications
        SET status = 'approved', reviewed_by = $1, reviewed_at = NOW()
-       WHERE id = $2 AND status = 'pending'
+       WHERE id = $2 AND status = 'pending' AND NOT EXISTS (SELECT 1 FROM donor_profiles dp JOIN organizations o
+         ON o.district=dp.district AND o.type='bloodbank' AND o.is_active AND o.verification_status='approved'
+         WHERE dp.user_id=donor_verifications.donor_id)
        RETURNING id, donor_id, claimed_blood_group, status`,
       [adminId, id],
       );
@@ -118,7 +162,9 @@ export async function rejectDonorVerification(req: AuthRequest, res: Response, n
       const updated = await client.query(
       `UPDATE donor_verifications
        SET status = 'rejected', reviewed_by = $1, reviewed_at = NOW(), rejection_reason = $2
-       WHERE id = $3 AND status = 'pending'
+       WHERE id = $3 AND status = 'pending' AND NOT EXISTS (SELECT 1 FROM donor_profiles dp JOIN organizations o
+         ON o.district=dp.district AND o.type='bloodbank' AND o.is_active AND o.verification_status='approved'
+         WHERE dp.user_id=donor_verifications.donor_id)
        RETURNING id, donor_id, claimed_blood_group, status, rejection_reason`,
       [adminId, reason || null, id],
       );

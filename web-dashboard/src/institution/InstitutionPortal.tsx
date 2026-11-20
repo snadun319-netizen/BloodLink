@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import { Activity, AlertCircle, Bell, Building2, Check, ChevronRight, CircleHelp, ClipboardList, Droplets, LayoutDashboard, LoaderCircle, LogOut, Menu, RefreshCw, ShieldCheck, Users, X } from 'lucide-react';
+import { Activity, AlertCircle, Bell, Building2, Check, ChevronRight, CircleHelp, ClipboardList, Droplets, LayoutDashboard, LoaderCircle, LogOut, Menu, RefreshCw, ShieldCheck, Users, X, FileCheck2 } from 'lucide-react';
 import type { Api } from '../api';
 import { Brand, Modal } from '../components';
 import type { BloodRequest, Institution, Staff, Stock } from '../types';
@@ -8,12 +8,14 @@ import { BankContext } from './context';
 import type { BankData } from './context';
 import { BankOverview, StockPage, RequestsPage, HealthAlertsPage, TeamPage } from './pages';
 import './institution.css';
+import { DonorApprovalsPage } from './DonorApprovalsPage';
 
 const navigation = [
   { to: '/bank', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/bank/stock', label: 'Blood stock', icon: Droplets },
   { to: '/bank/requests', label: 'Blood requests', icon: ClipboardList },
   { to: '/bank/health-alerts', label: 'Health alerts', icon: Activity },
+  { to: '/bank/donor-approvals', label: 'Donor approvals', icon: FileCheck2 },
   { to: '/bank/team', label: 'Team', icon: Users },
 ];
 
@@ -49,11 +51,11 @@ export function InstitutionPortal({ api, onLogout }: { api: Api; onLogout: () =>
   const primary = data?.staff.some(s => s.email === api.email && s.is_bank_account);
   return <div className="app-layout bank-workspace">{mobile && <button className="nav-backdrop" aria-label="Close navigation" onClick={() => setMobile(false)} />}
     <aside className={`sidebar ${mobile ? 'sidebar-open' : ''}`}><Link to="/bank" className="brand-link"><Brand subtitle={institution?.name || 'INSTITUTION WORKSPACE'} /></Link><div className="bank-workspace-tag"><Building2 size={14} />{institution?.type === 'hospital' ? 'Hospital workspace' : 'Blood bank workspace'}</div><div className="nav-section-label">MAIN MENU</div><nav aria-label="Institution navigation">{navigation.map(item => <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => `nav-item ${isActive ? 'nav-active' : ''}`}><item.icon size={18} /><span>{item.label}</span>{item.label === 'Blood requests' && pending > 0 && <b className="nav-count">{pending}</b>}</NavLink>)}</nav>
-      <div className="sidebar-bottom"><div className="bank-isolation"><ShieldCheck size={18} /><p>Your institution. Your workspace.<small>Records are private to your team.</small></p></div><button className="help-button" onClick={() => setHelp(true)}><CircleHelp size={18} />Workspace guide<ChevronRight size={15} /></button><div className="profile"><span className="avatar">{initials}</span><div><strong>{primary ? 'Blood bank admin' : 'Institution staff'}</strong><small title={api.email}>{api.email}</small></div><button className="icon-button" aria-label="Sign out" disabled={busy} onClick={() => setLogout(true)}><LogOut size={17} /></button></div></div>
+      <div className="sidebar-bottom"><div className="profile"><span className="avatar">{initials}</span><div><strong>{primary ? 'Blood bank admin' : 'Institution staff'}</strong><small title={api.email}>{api.email}</small></div><button className="icon-button" aria-label="Sign out" disabled={busy} onClick={() => setLogout(true)}><LogOut size={17} /></button></div></div>
     </aside><div className="main-layout"><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-menu" aria-label="Open navigation" onClick={() => setMobile(!mobile)}><Menu size={20} /></button><span>Workspace</span><ChevronRight size={14} /><strong>{navigation.find(item => item.end ? location.pathname === item.to : location.pathname.startsWith(item.to))?.label || 'Dashboard'}</strong></div><div className="topbar-actions"><button className="icon-button" aria-label="Workspace guide" onClick={() => setHelp(true)}><CircleHelp size={18} /></button><Link to="/bank/requests?tab=Pending" className="icon-button notification-button" aria-label={`${pending} requests awaiting approval`}><Bell size={19} />{pending > 0 && <i />}</Link><span className="topbar-divider" /><span className="avatar avatar-small">{initials}</span></div></header>
       <main className="main-content"><div className="data-toolbar"><span><span className={`pulse-dot ${error ? 'dot-warning' : ''}`} />{loading ? 'Updating your workspace…' : error ? 'Connection needs attention' : 'Connected to BloodLink'}{updated && <small> · Updated {new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Colombo', hour: '2-digit', minute: '2-digit' }).format(new Date(updated))}</small>}</span><button className="text-button" disabled={loading || busy} onClick={() => void refresh()}><RefreshCw size={14} className={loading ? 'spin' : ''} />Refresh</button></div>
         {error && <div className="error-message" role="alert"><AlertCircle size={18} />{error}<button className="text-button" disabled={loading} onClick={() => void refresh()}>Retry</button></div>}
-        {data ? <BankContext.Provider value={{ api, data, busy, mutate, revision }}><Routes><Route path="/bank" element={<BankOverview />} /><Route path="/bank/stock" element={<StockPage />} /><Route path="/bank/requests" element={<RequestsPage />} /><Route path="/bank/health-alerts" element={<HealthAlertsPage />} /><Route path="/bank/team" element={<TeamPage />} /><Route path="*" element={<Navigate to="/bank" replace />} /></Routes></BankContext.Provider> : <div className="initial-loading">{loading ? <LoaderCircle className="spin" size={30} /> : <AlertCircle size={30} />}<h2>{loading ? 'Opening your workspace' : 'Workspace unavailable'}</h2><p>{loading ? 'Loading your institution’s latest records.' : 'Use Retry to reconnect to BloodLink.'}</p></div>}
+        {data ? <BankContext.Provider value={{ api, data, busy, mutate, revision }}><Routes><Route path="/bank" element={<BankOverview />} /><Route path="/bank/stock" element={<StockPage />} /><Route path="/bank/requests" element={<RequestsPage />} /><Route path="/bank/health-alerts" element={<HealthAlertsPage />} /><Route path="/bank/donor-approvals" element={primary && institution?.type === 'bloodbank' ? <DonorApprovalsPage /> : <Navigate to="/bank" replace />} /><Route path="/bank/team" element={<TeamPage />} /><Route path="*" element={<Navigate to="/bank" replace />} /></Routes></BankContext.Provider> : <div className="initial-loading">{loading ? <LoaderCircle className="spin" size={30} /> : <AlertCircle size={30} />}<h2>{loading ? 'Opening your workspace' : 'Workspace unavailable'}</h2><p>{loading ? 'Loading your institution’s latest records.' : 'Use Retry to reconnect to BloodLink.'}</p></div>}
         <footer className="page-footer"><span>BloodLink / {institution?.name || 'Institution workspace'}</span><span><ShieldCheck size={12} />Institution access protected</span></footer>
       </main></div>
     {toast && <div className="toast" role="status"><span><Check size={18} /></span>{toast}<button className="icon-button" aria-label="Dismiss notification" onClick={() => setToast('')}><X size={16} /></button></div>}

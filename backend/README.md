@@ -100,6 +100,11 @@ the editable detail fields; send the complete form. Coordinates must be supplied
 Staff provisioning accepts `email`, `password`, `role`, `organizationId` and enforces
 the existing password rules and institution/role match. It does not send invitations.
 The existing approval, donor-review, user-status and audit endpoints remain available.
+
+Donor blood-group reviews are routed using the donor profile district. The primary
+account for an approved blood bank can review pending donor documents from its own
+district in the institution portal. Donor document review is not available in the
+super admin workspace.
 Apply migration 003 before running the updated server.
 
 See [the admin requirements](../docs/SUPER_ADMIN_DASHBOARD.md),
