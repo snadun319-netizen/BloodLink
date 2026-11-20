@@ -61,8 +61,12 @@ export async function uploadVerificationDocument(req: AuthRequest, res: Response
 export async function downloadVerificationDocument(req: AuthRequest, res: Response) {
   const id = req.params.id;
   if (typeof id !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id)) throw new HttpError(400, 'Invalid document ID');
-  const row = (await pool.query(`SELECT file_name, mime_type, content FROM verification_documents
-    WHERE id = $1 AND (owner_id = $2 OR $3::boolean)`, [id, req.user!.id, req.user!.role === 'admin'])).rows[0];
+  const row = (await pool.query(`SELECT doc.file_name, doc.mime_type, doc.content FROM verification_documents doc
+    WHERE doc.id=$1 AND (doc.owner_id=$2 OR ($3::boolean AND EXISTS (
+      SELECT 1 FROM donor_profiles dp JOIN organizations o ON o.id=$4 JOIN users reviewer ON reviewer.id=$2
+      WHERE dp.user_id=doc.owner_id AND dp.district=o.district AND o.type='bloodbank' AND o.is_active
+        AND o.verification_status='approved' AND reviewer.is_bank_account AND reviewer.organization_id=o.id)))`,
+    [id, req.user!.id, req.user!.role === 'bloodbank_staff', req.user!.orgId])).rows[0];
   if (!row) throw new HttpError(404, 'Document not found');
   res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
   res.attachment(row.file_name).type(row.mime_type).send(row.content);
