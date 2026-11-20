@@ -41,6 +41,7 @@ export default function App() {
     phone: '',
     dob: '',
     nic: '',
+    district: '',
     bloodGroup: '',
     otp: '',
     documentName: '',
