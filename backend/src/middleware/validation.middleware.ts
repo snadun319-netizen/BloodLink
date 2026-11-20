@@ -95,6 +95,7 @@ export const validateRegistrationInput = validate(req => {
   req.body.nic = text(req.body.nic, "NIC", 20).toUpperCase();
   if (!/^(?:\d{9}[VX]|\d{12})$/.test(req.body.nic)) throw new HttpError(400, "Invalid NIC number format");
   if (!BLOOD_GROUPS.includes(req.body.bloodGroup)) throw new HttpError(400, "Invalid blood group");
+  if (!DISTRICTS.includes(req.body.district)) throw new HttpError(400, "Select a valid district");
   req.body.registrationToken = opaqueToken(req.body.registrationToken, "registration token");
   if (req.body.dob !== undefined && req.body.dob !== "" && req.body.dob !== null) {
     const dob = text(req.body.dob, "date of birth", 10);
