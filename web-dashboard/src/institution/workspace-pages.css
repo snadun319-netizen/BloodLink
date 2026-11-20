@@ -113,6 +113,9 @@
 .workspace-row-action { display:inline-flex; align-items:center; gap:5px; font-size:11px; color:#66758e; white-space:nowrap; border:1px solid #e8ecf3; border-radius:6px; padding:6px 8px; min-height:32px; background:#fff; }
 .workspace-row-action:hover { background:#f2f4fa; color:var(--red); border-color:#dce1ec; }
 .workspace-empty { text-align:center; padding:54px 22px; color:#8d98ac; }
+.donor-approvals-empty { box-sizing:border-box; width:100%; padding:42px 24px; background:#fff; }
+.donor-approvals-empty h3 { margin-bottom:8px; }
+.donor-approvals-empty p { line-height:1.8; }
 .workspace-empty>svg { margin-bottom:15px; }
 .workspace-empty h3 { font-size:15px; color:#4d5a72; margin-bottom:8px; }
 .workspace-empty p { max-width:390px; margin:0 auto; font-size:12px; line-height:1.85; color:#8a94a6; }
