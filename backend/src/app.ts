@@ -42,7 +42,7 @@ export function createApp() {
   app.use('/api/notifications', notificationsRoutes);
   app.use('/api/stocks', stockRoutes);
   app.use('/api/institution', institutionRoutes);
-  app.get('/api/documents/:id', authenticate, requireRole('donor', 'admin'), downloadVerificationDocument);
+  app.get('/api/documents/:id', authenticate, requireRole('donor', 'bloodbank_staff'), downloadVerificationDocument);
   app.get('/api/donation-records/:token', downloadDonationRecord);
   app.get("/", (req, res) => res.json({ name: "BloodLink REST API Server", status: "online", healthCheck: "/api/health" }));
   app.get("/api/health", async (req, res) => {
