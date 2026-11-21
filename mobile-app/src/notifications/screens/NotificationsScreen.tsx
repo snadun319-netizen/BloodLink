@@ -16,8 +16,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { ColorPalette, radius, useTheme } from '../../profile/theme';
-import { FilterChips, GuidelinesModal, NotificationCard } from '../components';
+import { FilterChips, GuidelinesModal, LabReportModal, NotificationCard } from '../components';
 import { NotificationsState } from '../hooks/useNotifications';
+import { USE_MOCK } from '../services/notificationsService';
 import { AppNotification } from '../types/notifications';
 import { FILTERS } from '../utils/kindConfig';
 
@@ -54,6 +55,7 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
     const { user } = useAuth();
     const [filter, setFilter] = useState<string>('all');
     const [guidelinesVisible, setGuidelinesVisible] = useState(false);
+    const [labReportItem, setLabReportItem] = useState<AppNotification | null>(null);
 
     const chips = useMemo(
         () =>
@@ -172,11 +174,19 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
                                     onViewRequest={handleViewRequest}
                                     onOpenLabPdf={(item) => {
                                         state.markRead(item.id);
-                                        openUrl(item.labReport?.labPdfUrl, 'The lab report PDF will be available once the backend is connected.');
+                                        if (item.labReport?.labPdfUrl) {
+                                            openUrl(item.labReport.labPdfUrl, '');
+                                            return;
+                                        }
+                                        setLabReportItem(item);
                                     }}
                                     onOpenDoctorNote={(item) => {
                                         state.markRead(item.id);
-                                        openUrl(item.labReport?.doctorNoteUrl, 'The doctor note will be available once the backend is connected.');
+                                        if (item.labReport?.doctorNoteUrl) {
+                                            openUrl(item.labReport.doctorNoteUrl, '');
+                                            return;
+                                        }
+                                        setLabReportItem(item);
                                     }}
                                     onViewGuidelines={(item) => {
                                         state.markRead(item.id);
@@ -193,6 +203,14 @@ export default function NotificationsScreen({ state, onBack, onViewRequest }: Pr
             <GuidelinesModal
                 visible={guidelinesVisible}
                 onClose={() => setGuidelinesVisible(false)}
+            />
+
+            <LabReportModal
+                visible={labReportItem !== null}
+                notification={labReportItem}
+                donorName={user?.fullName}
+                isMock={USE_MOCK}
+                onClose={() => setLabReportItem(null)}
             />
         </SafeAreaView>
     );
