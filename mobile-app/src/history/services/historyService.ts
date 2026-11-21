@@ -13,7 +13,7 @@
 
 import { DonationHistoryData } from '../types/history';
 
-const USE_MOCK = true;
+export const USE_MOCK = true;
 const API_BASE_URL = 'http://10.0.2.2:3000/api'; // Android emulator -> host machine
 
 let authToken: string | null = null;
