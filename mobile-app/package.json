@@ -8,7 +8,9 @@
     "expo-constants": "~57.0.21",
     "expo-document-picker": "~57.0.3",
     "expo-font": "~57.0.4",
+    "expo-print": "~57.0.2",
     "expo-secure-store": "~57.0.4",
+    "expo-sharing": "~57.0.26",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -32,7 +34,8 @@
     "test:birth-date": "node --test tests/birth-date.test.cjs",
     "test:registration": "node --test tests/registration.test.cjs",
     "test:requests": "node --test tests/requests.test.cjs",
-    "test:features": "node --test tests/features.test.cjs"
+    "test:features": "node --test tests/features.test.cjs",
+    "test:pdf": "node --test tests/pdfTemplates.test.cjs"
   },
   "private": true
 }
