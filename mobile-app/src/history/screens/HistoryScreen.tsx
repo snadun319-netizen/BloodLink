@@ -18,9 +18,9 @@ import DonorBottomNav, { DonorTab } from '../../components/DonorBottomNav';
 import { useAuth } from '../../context/AuthContext';
 import { ColorPalette, radius, useTheme } from '../../profile/theme';
 import { getInitials } from '../../profile/utils/format';
-import { DonationCard, ImpactCard } from '../components';
+import { CertificateModal, DonationCard, ImpactCard } from '../components';
 import { HistoryState } from '../hooks/useDonationHistory';
-import { fetchDonorRecordUrl } from '../services/historyService';
+import { USE_MOCK, fetchDonorRecordUrl } from '../services/historyService';
 import { DonationRecord } from '../types/history';
 
 interface Props {
@@ -44,20 +44,17 @@ export default function HistoryScreen({ state, onBack, onNavigateTab, onNavigate
     const styles = useMemo(() => createStyles(colors), [colors]);
     const { data, loading, refreshing, error } = state;
     const [downloading, setDownloading] = useState(false);
+    const [certificateRecord, setCertificateRecord] = useState<DonationRecord | null>(null);
 
     const initials = user?.fullName?.trim() ? getInitials(user.fullName) : null;
 
     const handleViewCertificate = (record: DonationRecord) => {
-        if (!record.certificateUrl) {
-            Alert.alert(
-                'Certificate not available',
-                record.status === 'pending'
-                    ? 'This donation is still waiting for verification.'
-                    : 'The certificate for this donation is not available yet.',
-            );
+        // An official certificate link from the backend takes priority.
+        if (record.certificateUrl) {
+            openUrl(record.certificateUrl);
             return;
         }
-        openUrl(record.certificateUrl);
+        setCertificateRecord(record);
     };
 
     const handleDownloadRecord = async () => {
@@ -164,6 +161,15 @@ export default function HistoryScreen({ state, onBack, onNavigateTab, onNavigate
                     </Pressable>
                 </ScrollView>
             ) : null}
+
+            <CertificateModal
+                visible={certificateRecord !== null}
+                record={certificateRecord}
+                donorName={user?.fullName}
+                bloodGroup={data?.summary.bloodGroup}
+                isMock={USE_MOCK}
+                onClose={() => setCertificateRecord(null)}
+            />
 
             <DonorBottomNav
                 activeTab="History"
