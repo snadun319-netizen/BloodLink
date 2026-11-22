@@ -2,7 +2,7 @@ export interface Organization {
   id: number; name: string; type: 'bloodbank' | 'hospital'; district: string | null;
   address: string | null; contact_phone: string | null; contact_email: string | null;
   latitude: string | null; longitude: string | null; registration_evidence_url: string | null;
-  branch_name: string | null; parent_organization_id: number | null; parent_name: string | null; account_email: string | null;
+  department: string | null; account_email: string | null;
   verification_status: 'pending' | 'approved' | 'rejected'; is_active: boolean;
   created_at: string; staff_count: number; total_units: number; critical_groups: number; active_requests: number;
 }
@@ -33,12 +33,12 @@ export interface BloodRequest {
   reason: string; department: string; created_at: string; reviewed_at: string | null; review_reason: string | null;
   accepted_donors: number; donated_units: number;
   expires_at?:string|null;outreach_target?:number|null;is_simulated?:boolean;source_status?:string|null;
-  organization_name?: string; district?: string; branch_name?: string; created_by_email?: string; reviewed_by_email?: string;
+  organization_name?: string; district?: string; created_by_email?: string; reviewed_by_email?: string;
   organization_active?: boolean; organization_status?: string;
 }
 export interface Stock { blood_group: string; available_units: number; status: 'Normal' | 'Low' | 'Critical'; updated_at: string | null }
 export interface Institution {
-  id: number; name: string; type: 'bloodbank' | 'hospital'; district: string | null; branch_name: string | null;
+  id: number; name: string; type: 'bloodbank' | 'hospital'; district: string | null; department: string | null;
   address: string | null; contact_phone: string | null; active_requests: number; pending_requests: number; total_units: number; donations: number;
 }
 export interface HealthAlert { id: number; donor_id: number; full_name: string; phone: string | null; subject: string; message: string; sent_by_email: string; created_at: string }

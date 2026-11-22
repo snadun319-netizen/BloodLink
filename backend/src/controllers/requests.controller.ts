@@ -26,7 +26,7 @@ export async function getRequestsPageData(req: AuthRequest, res: Response) {
   if (!donor) throw new HttpError(404, 'Donor profile not found');
   const candidates = await matchedRequests(donorId);
   const mission = (await pool.query(`SELECT n.request_id, n.responded_at, r.blood_group, r.required_units,
-    o.name, o.branch_name, o.contact_phone FROM notifications n
+    o.name, o.department, o.contact_phone FROM notifications n
     JOIN blood_requests r ON r.id = n.request_id JOIN organizations o ON o.id = r.organization_id
     WHERE n.donor_id = $1 AND n.response_status = 'accepted' AND n.closed_at IS NULL
       AND r.status = 'Active' AND (r.expires_at IS NULL OR r.expires_at>NOW()) AND r.approval_status = 'Approved' AND o.is_active AND o.verification_status = 'approved' LIMIT 1`, [donorId])).rows[0];
@@ -36,7 +36,7 @@ export async function getRequestsPageData(req: AuthRequest, res: Response) {
     isUrgent: row.priority !== 'Normal', type: row.priority === 'Normal' ? 'standard' : 'urgent',
     requirementLabel: `${groupLabel(row.blood_group)} · ${row.required_units} units needed`,
     address: row.address || 'Address unavailable', contactNumber: row.contact_phone || '',
-    patientCase: 'Institution blood donation request', department: row.department || row.branch_name,
+    patientCase: 'Institution blood donation request', department: row.department,
     verifiedInstitution: true, acceptedDonors: row.accepted_donors, priority: row.priority,
   }));
   const unread = (await pool.query(`SELECT COUNT(*)::integer AS count FROM notifications n
@@ -58,7 +58,7 @@ export async function getRequestsPageData(req: AuthRequest, res: Response) {
     unreadAlertsCount: alerts.length, availableAlertsCount: alerts.length, unreadNotificationsCount: unread,
     activeCount: mission ? 1 : 0, alerts, emptyState,
     activeMission: mission ? {
-      id: String(mission.request_id), hospitalName: mission.name, unitDepartment: mission.branch_name || '',
+      id: String(mission.request_id), hospitalName: mission.name, unitDepartment: mission.department || '',
       bloodGroup: groupLabel(mission.blood_group), unitsNeeded: mission.required_units,
       estimatedArrival: 'Contact the institution', status: 'En Route', coordinatorName: 'Donation coordinator',
       coordinatorPhone: mission.contact_phone || '',

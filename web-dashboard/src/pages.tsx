@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, ArrowUpRight, Building2, CalendarDays, ChevronRight, Download, Droplet, Filter, Plus, ShieldCheck, TriangleAlert, Users } from 'lucide-react';
 import { useDashboard } from './context';
-import { Badge, BankTable, CardHeading, Empty, Evidence, PageHeading, Pagination, SearchBox, formatDate } from './components';
+import { Badge, BankTable, CardHeading, Empty, PageHeading, Pagination, SearchBox, formatDate } from './components';
 import { BankDetails, BankForm, Confirm, BankAccountForm } from './forms';
 import { bankCode, bankStatus, DISTRICTS, GROUPS } from './types';
 import type { Organization, BankAccount } from './types';
@@ -33,7 +33,7 @@ export function OverviewPage() {
 
 function exportBanks(banks: Organization[]) {
   const escape = (value: unknown) => { let text = String(value ?? ''); if (/^[\s]*[=+\-@\t\r]/.test(text)) text = "'" + text; return '"' + text.replaceAll('"', '""') + '"'; };
-  const rows = [['Code', 'Blood bank', 'Branch', 'Main bank', 'Login email', 'District', 'Status', 'Address', 'Phone', 'Email', 'Stock units', 'Staff'], ...banks.map(b => [bankCode(b), b.name, b.branch_name, b.parent_name, b.account_email, b.district, bankStatus(b), b.address, b.contact_phone, b.contact_email, b.total_units, b.staff_count])];
+  const rows = [['Code', 'Blood bank', 'Login email', 'District', 'Status', 'Address', 'Phone', 'Email', 'Stock units', 'Staff'], ...banks.map(b => [bankCode(b), b.name, b.account_email, b.district, bankStatus(b), b.address, b.contact_phone, b.contact_email, b.total_units, b.staff_count])];
   const url = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(row => row.map(escape).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8;' }));
   const link = document.createElement('a'); link.href = url; link.download = 'bloodlink-blood-banks.csv'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
@@ -42,7 +42,7 @@ export function BanksPage() {
   const [search, setSearch] = useState(''); const [status, setStatus] = useState(params.get('status') || 'all'); const [district, setDistrict] = useState(''); const [critical, setCritical] = useState(params.get('stock') === 'critical');
   const [page, setPage] = useState(1); const [selected, setSelected] = useState<Organization | null>(null); const [form, setForm] = useState<Organization | 'new' | null>(params.get('account') ? 'new' : null);
   const banks = data.organizations.filter(b => b.type === 'bloodbank');
-  const filtered = banks.filter(b => (status === 'all' || bankStatus(b) === status) && (!district || b.district === district) && (!critical || b.critical_groups > 0) && [b.name, b.branch_name, b.parent_name, b.account_email, bankCode(b), b.address, b.contact_email, b.contact_phone, `BL–${String(b.id).padStart(4, '0')}`].join(' ').toLowerCase().includes(search.toLowerCase()));
+  const filtered = banks.filter(b => (status === 'all' || bankStatus(b) === status) && (!district || b.district === district) && (!critical || b.critical_groups > 0) && [b.name, b.account_email, bankCode(b), b.address, b.contact_email, b.contact_phone, `BL–${String(b.id).padStart(4, '0')}`].join(' ').toLowerCase().includes(search.toLowerCase()));
   const currentPage = Math.min(page, Math.max(1, Math.ceil(filtered.length / 7)));
   const selectedBank = selected && data.organizations.find(b => b.id === selected.id);
   return <><PageHeading eyebrow="INSTITUTION MANAGEMENT" title="Blood banks" description="Select a prepared account, then register the bank or branch and its location."><button className="button secondary" disabled={!filtered.length} onClick={() => exportBanks(filtered)}><Download size={16} />Export CSV</button><button className="button primary" onClick={() => setForm('new')}><Plus size={17} />Add blood bank</button></PageHeading>

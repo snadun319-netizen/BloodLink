@@ -9,7 +9,7 @@ export async function getBloodBanks(req: AuthRequest, res: Response, next: NextF
       'SELECT full_name, latitude, longitude FROM donor_profiles WHERE user_id = $1', [req.user.id],
     )).rows[0] : null;
     const result = await pool.query(`
-      SELECT o.id, o.name, o.type, o.district, o.address, o.contact_phone, o.branch_name,
+      SELECT o.id, o.name, o.type, o.district, o.address, o.contact_phone, o.department,
         o.latitude, o.longitude,
         COALESCE((SELECT json_agg(json_build_object(
           'bloodGroup', s.blood_group, 'units', s.available_units,
@@ -31,7 +31,7 @@ export async function getBloodBanks(req: AuthRequest, res: Response, next: NextF
       }
       return {
         id: String(row.id), name: row.name, type: row.type, district: row.district,
-        address: row.address, phone: row.contact_phone, department: row.branch_name,
+        address: row.address, phone: row.contact_phone, department: row.department,
         latitude: row.latitude == null ? null : Number(row.latitude),
         longitude: row.longitude == null ? null : Number(row.longitude), distanceKm, stocks: row.stocks,
       };

@@ -344,7 +344,7 @@ async function main() {
   resetLimits();
   check((await post("/login", { email: primary.email, password: initialPassword })).status === 403, "An unassigned bank account cannot sign in");
   check((await db.query("SELECT id FROM refresh_tokens WHERE user_id = $1", [primary.id])).rowCount === 0, "Unassigned login creates no sessions");
-  const onboarding = { ...bankInput, name: "Admin Onboarded Bank", accountId: primary.id, branchName: "Head office" };
+  const onboarding = { ...bankInput, name: "Admin Onboarded Bank", accountId: primary.id };
   check((await api("/api/admin/blood-banks", onboarding)).status === 401, "Anonymous visitors cannot register banks");
   check((await api("/api/admin/blood-banks", onboarding, donorToken)).status === 403, "Donors cannot register banks");
   check((await api("/api/admin/blood-banks", { ...onboarding, accountId: undefined }, adminToken)).status === 400, "Bank registration requires a selected account");
@@ -363,15 +363,12 @@ async function main() {
   check(reused.status === 409 && !(await db.query("SELECT id FROM organizations WHERE name = 'Reused account rollback'")).rowCount, "An assigned account cannot be reused for a second bank");
   const spare = await newAccount("spare.bank@example.com");
   check((await api(`/api/admin/blood-banks/${mainBank.id}/account`, { accountId: spare.data.user.id }, adminToken)).status === 409, "A bank cannot receive two primary accounts");
-  const branchAccount = await newAccount("branch@example.com");
-  const branchInput = { ...onboarding, name: "Main Bank Colombo", branchName: "Colombo branch", parentOrganizationId: mainBank.id, accountId: branchAccount.data.user.id };
-  const branch = await api("/api/admin/blood-banks", branchInput, adminToken);
-  check(branch.status === 201 && branch.data.organization.parent_organization_id === mainBank.id && branch.data.user.id === branchAccount.data.user.id, "Branch registration links its own pre-created account");
-  check((await api("/api/admin/blood-banks", { ...branchInput, parentOrganizationId: branch.data.organization.id, accountId: spare.data.user.id }, adminToken)).status === 400, "Branches cannot be selected as main banks");
-  check((await api(`/api/admin/organizations/${mainBank.id}`, { ...bankInput, branchName: "Head office", parentOrganizationId: branch.data.organization.id }, adminToken, "PATCH")).status === 409, "Main banks with branches cannot become branches");
-  check((await api(`/api/admin/organizations/${branch.data.organization.id}`, { ...bankInput, branchName: "Branch", parentOrganizationId: branch.data.organization.id }, adminToken, "PATCH")).status === 400, "A bank cannot be its own parent");
+  const standaloneAccount = await newAccount("standalone.bank@example.com");
+  const standaloneInput = { ...onboarding, name: "Ratnapura Blood Bank", accountId: standaloneAccount.data.user.id };
+  const standalone = await api("/api/admin/blood-banks", standaloneInput, adminToken);
+  check(standalone.status === 201 && standalone.data.organization.name === "Ratnapura Blood Bank" && standalone.data.user.id === standaloneAccount.data.user.id, "A blood bank is registered as a standalone named institution");
   const directory = await api("/api/admin/organizations", undefined, adminToken);
-  check(directory.data.organizations.some((item: any) => item.id === branch.data.organization.id && item.parent_name === mainBank.name && item.account_email === "branch@example.com"), "Directory includes the selected login and branch linkage");
+  check(directory.data.organizations.some((item: any) => item.id === standalone.data.organization.id && item.name === "Ratnapura Blood Bank" && item.account_email === "standalone.bank@example.com"), "Directory includes standalone banks and their selected login");
   const accounts = await api("/api/admin/bank-accounts", undefined, adminToken);
   check(accounts.data.accounts.some((item: any) => item.id === spare.data.user.id && item.organization_id === null && item.organization_name === null) && accounts.data.accounts.every((item: any) => item.is_bank_account), "Accounts list includes unassigned logins and excludes teammates");
   const competing = await Promise.all(["race1@example.com", "race2@example.com"].map(newAccount));
@@ -404,9 +401,9 @@ async function main() {
   const ownedLogin = await post("/login", { email: primary.email, password: passwordChange.password });
   check(ownedLogin.status === 200 && !ownedLogin.data.user.mustChangePassword, "Bank signs in with its own password after handover");
   check((await api("/api/admin/bank-accounts", undefined, ownedLogin.data.accessToken)).status === 403, "Bank accounts cannot use platform administration");
-  const branchProof = await resetProof("branch@example.com", branch.data.user.id);
-  check((await post("/reset-password", { resetToken: branchProof, password: "RecoveredPassword789!" })).status === 200, "Email recovery can replace a temporary bank password");
-  check(!(await db.query("SELECT must_change_password FROM users WHERE id = $1", [branch.data.user.id])).rows[0].must_change_password, "Email recovery clears the first-use password requirement");
+  const bankProof = await resetProof("standalone.bank@example.com", standalone.data.user.id);
+  check((await post("/reset-password", { resetToken: bankProof, password: "RecoveredPassword789!" })).status === 200, "Email recovery can replace a temporary bank password");
+  check(!(await db.query("SELECT must_change_password FROM users WHERE id = $1", [standalone.data.user.id])).rows[0].must_change_password, "Email recovery clears the first-use password requirement");
 
   const otherProof = await proof("other@example.com");
   check((await post("/register", { ...input, email: "other@example.com", phone: "0777654321", registrationToken: otherProof })).status === 409, "Database rejects duplicate NIC");

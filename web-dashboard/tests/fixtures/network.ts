@@ -16,7 +16,7 @@ export function createTestData() {
   let organizations: Organization[] = names.map(([name, district], i) => ({
     id: i + 1, name, district, type: 'bloodbank', address: `${district}, Sri Lanka`,
     contact_phone: `+9411200000${i}`, contact_email: `coordinator${i + 1}@example.com`,
-    latitude: null, longitude: null, registration_evidence_url: null, branch_name: null, parent_organization_id: null, parent_name: null, account_email: null,
+    latitude: null, longitude: null, registration_evidence_url: null, department: null, account_email: null,
     verification_status: i === 4 || i === 6 ? 'pending' : i === 8 ? 'rejected' : 'approved',
     is_active: i !== 7, created_at: date(i * 20 + 2), staff_count: i === 4 || i === 6 || i === 8 ? 0 : 1,
     total_units: 0, critical_groups: 0, active_requests: 0,
@@ -41,7 +41,6 @@ export function createTestData() {
     });
     if (method === 'GET') {
       if (path === '/admin/organizations') return { organizations: structuredClone(organizations.map(bank => ({ ...bank,
-        parent_name: organizations.find(parent => parent.id === bank.parent_organization_id)?.name || null,
         account_email: staff.find(member => member.organization_id === bank.id && member.is_bank_account)?.email || null,
         staff_count: staff.filter(member => member.organization_id === bank.id).length,
       }))) };
@@ -71,8 +70,8 @@ export function createTestData() {
       const member = selectedAccount();
       const bank = { id: nextId++, name: body.name, type: 'bloodbank', district: body.district, address: body.address,
         contact_phone: body.contactPhone || null, contact_email: body.contactEmail || null, latitude: body.latitude, longitude: body.longitude,
-        registration_evidence_url: body.registrationEvidenceUrl || null, branch_name: body.branchName || null, parent_organization_id: Number(body.parentOrganizationId) || null,
-        parent_name: null, account_email: member.email, verification_status: 'approved', is_active: true, created_at: new Date().toISOString(),
+        registration_evidence_url: body.registrationEvidenceUrl || null, department: null,
+        account_email: member.email, verification_status: 'approved', is_active: true, created_at: new Date().toISOString(),
         staff_count: 1, total_units: 0, critical_groups: 0, active_requests: 0 } as Organization;
       member.organization_id = bank.id;
       organizations = [bank, ...organizations]; return { organization: bank, user: member };
@@ -87,7 +86,7 @@ export function createTestData() {
       const bank = organizations.find(bank => bank.id === id); if (!bank) throw new Error('Institution not found.');
       if (path.endsWith('/access')) bank.is_active = body.isActive;
       else Object.assign(bank, { name: body.name, district: body.district, address: body.address, contact_phone: body.contactPhone, contact_email: body.contactEmail,
-        latitude: body.latitude, longitude: body.longitude, registration_evidence_url: body.registrationEvidenceUrl, branch_name: body.branchName || null, parent_organization_id: Number(body.parentOrganizationId) || null });
+        latitude: body.latitude, longitude: body.longitude, registration_evidence_url: body.registrationEvidenceUrl });
       return { organization: bank };
     }
     if (path.startsWith('/organizations/admin/')) {

@@ -17,7 +17,6 @@ export async function listNetworkOrganizations(req: AuthRequest, res: Response) 
   const result = await pool.query(`
     SELECT o.*,
       (SELECT email FROM users WHERE organization_id = o.id AND is_bank_account) AS account_email,
-      (SELECT name FROM organizations WHERE id = o.parent_organization_id) AS parent_name,
       (SELECT COUNT(*)::integer FROM users u WHERE u.organization_id = o.id AND u.role IN ('hospital_staff', 'bloodbank_staff')) AS staff_count,
       (SELECT COALESCE(SUM(s.available_units), 0)::integer FROM blood_stocks s WHERE s.organization_id = o.id) AS total_units,
       (SELECT COUNT(*)::integer FROM blood_stocks s WHERE s.organization_id = o.id AND s.status = 'Critical') AS critical_groups,
@@ -68,12 +67,11 @@ export async function createNetworkOrganization(req: AuthRequest, res: Response)
 }
 
 export async function editNetworkOrganization(req: AuthRequest, res: Response) {
-  const { name, district, address, contactPhone, contactEmail, latitude, longitude, registrationEvidenceUrl, branchName, parentOrganizationId } = req.body;
+  const { name, district, address, contactPhone, contactEmail, latitude, longitude, registrationEvidenceUrl } = req.body;
   const organization = await transaction(async client => {
-    await validateParent(client, parentOrganizationId, Number(req.params.id));
     const row = (await client.query(`UPDATE organizations SET name = $1, district = $2, address = $3,
-      contact_phone = $4, contact_email = $5, latitude = $6, longitude = $7, registration_evidence_url = $8, branch_name = $9, parent_organization_id = $10
-      WHERE id = $11 RETURNING *`, [name, district, address, contactPhone, contactEmail, latitude, longitude, registrationEvidenceUrl, branchName, parentOrganizationId, req.params.id])).rows[0];
+      contact_phone = $4, contact_email = $5, latitude = $6, longitude = $7, registration_evidence_url = $8
+      WHERE id = $9 RETURNING *`, [name, district, address, contactPhone, contactEmail, latitude, longitude, registrationEvidenceUrl, req.params.id])).rows[0];
     if (!row) throw new HttpError(404, "Institution not found");
     await audit(client, req, "ORGANIZATION_UPDATED", "organization", row.id, { organizationName: name });
     return row;
@@ -93,6 +91,22 @@ export async function setNetworkOrganizationAccess(req: AuthRequest, res: Respon
     return { ...row, is_active: req.body.isActive };
   });
   res.json({ organization });
+}
+
+export async function deleteSuspendedBloodBank(req: AuthRequest, res: Response) {
+  const deleted = await transaction(async client => {
+    const bank = (await client.query("SELECT * FROM organizations WHERE id = $1 AND type = 'bloodbank' FOR UPDATE", [req.params.id])).rows[0];
+    if (!bank) throw new HttpError(404, "Blood bank not found");
+    if (bank.is_active || bank.verification_status !== "approved") throw new HttpError(409, "Approve and suspend the blood bank before deleting it");
+
+    const staff = (await client.query("SELECT id FROM users WHERE organization_id = $1 AND role IN ('hospital_staff', 'bloodbank_staff')", [bank.id])).rows;
+    await client.query("DELETE FROM health_alerts WHERE organization_id = $1", [bank.id]);
+    if (staff.length) await client.query("DELETE FROM users WHERE id = ANY($1::int[])", [staff.map(user => user.id)]);
+    await client.query("DELETE FROM organizations WHERE id = $1", [bank.id]);
+    await audit(client, req, "ORGANIZATION_DELETED", "organization", bank.id, { organizationName: bank.name });
+    return { name: bank.name };
+  });
+  res.json({ deleted: true, organizationName: deleted.name });
 }
 
 export async function listNetworkStaff(req: AuthRequest, res: Response) {
@@ -120,15 +134,6 @@ export async function createNetworkStaff(req: AuthRequest, res: Response) {
   res.status(201).json({ user });
 }
 
-async function validateParent(client: PoolClient, parentId: number | null, currentId?: number) {
-  // Serialize branch changes so concurrent edits cannot turn a main bank into its own descendant.
-  await client.query("SELECT pg_advisory_xact_lock(178442362)");
-  if (currentId && parentId && (await client.query("SELECT id FROM organizations WHERE parent_organization_id = $1 LIMIT 1", [currentId])).rowCount) throw new HttpError(409, "A main bank with branches cannot become a branch");
-  if (!parentId) return;
-  const parent = (await client.query("SELECT type, parent_organization_id FROM organizations WHERE id = $1", [parentId])).rows[0];
-  if (parentId === currentId || !parent || parent.type !== "bloodbank" || parent.parent_organization_id) throw new HttpError(400, "Select a main blood bank as the parent");
-}
-
 async function availableBankAccount(client: PoolClient, accountId: number) {
   const user = (await client.query(`SELECT id, email, role, organization_id, status, is_bank_account, must_change_password, created_at
     FROM users WHERE id = $1 FOR UPDATE`, [accountId])).rows[0];
@@ -146,14 +151,13 @@ async function linkBankAccount(client: PoolClient, req: AuthRequest, org: { id: 
 }
 
 export async function onboardBloodBank(req: AuthRequest, res: Response) {
-  const { name, district, address, contactPhone, contactEmail, latitude, longitude, registrationEvidenceUrl, branchName, parentOrganizationId, accountId } = req.body;
+  const { name, district, address, contactPhone, contactEmail, latitude, longitude, registrationEvidenceUrl, accountId } = req.body;
   const result = await transaction(async client => {
-    await validateParent(client, parentOrganizationId);
     const selectedAccount = await availableBankAccount(client, accountId);
     const organization = (await client.query(`INSERT INTO organizations
-      (name, type, district, address, contact_phone, contact_email, latitude, longitude, registration_evidence_url, branch_name, parent_organization_id, verification_status, verified_by, verified_at)
-      VALUES ($1, 'bloodbank', $2, $3, $4, $5, $6, $7, $8, $9, $10, 'approved', $11, NOW()) RETURNING *`,
-      [name, district, address, contactPhone, contactEmail, latitude, longitude, registrationEvidenceUrl, branchName, parentOrganizationId, req.user!.id])).rows[0];
+      (name, type, district, address, contact_phone, contact_email, latitude, longitude, registration_evidence_url, verification_status, verified_by, verified_at)
+      VALUES ($1, 'bloodbank', $2, $3, $4, $5, $6, $7, $8, 'approved', $9, NOW()) RETURNING *`,
+      [name, district, address, contactPhone, contactEmail, latitude, longitude, registrationEvidenceUrl, req.user!.id])).rows[0];
     await audit(client, req, "ORGANIZATION_CREATED", "organization", organization.id, { organizationName: name });
     const user = await linkBankAccount(client, req, organization, selectedAccount);
     return { organization, user };

@@ -35,7 +35,7 @@ export const donorEligibilitySQL = `dp.blood_group_verified AND dp.is_available
 
 export async function matchedRequests(donorId: string, limit = 100) {
   return (await pool.query(`SELECT r.*, o.name AS hospital_name, o.address, o.contact_phone,
-    o.branch_name, o.district, ${distanceSQL('dp', 'o')} AS distance_km,
+    o.department, o.district, ${distanceSQL('dp', 'o')} AS distance_km,
     n.response_status, n.responded_at, n.closed_at,
     (SELECT COUNT(*)::integer FROM notifications a WHERE a.request_id = r.id AND a.response_status = 'accepted' AND a.closed_at IS NULL) AS accepted_donors
     FROM blood_requests r JOIN organizations o ON o.id = r.organization_id
