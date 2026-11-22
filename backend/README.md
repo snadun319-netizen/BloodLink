@@ -116,7 +116,7 @@ Apply migrations through 005 before running the updated portal. Existing bank li
 
 - `POST /api/admin/bank-accounts`: admin-only; `accountEmail` and strong `password`. Creates an unassigned primary login with `must_change_password = true`.
 - `GET /api/admin/bank-accounts`: includes assigned and unassigned primary accounts using a left join; ordinary teammates are excluded.
-- `POST /api/admin/blood-banks`: admin-only; bank details plus `type: "bloodbank"` and `accountId` referencing an active, unassigned primary login. Requires district, address and coordinates. Optional `branchName` and `parentOrganizationId` link a branch to a main bank. Creates the approved bank and assigns the selected login in one transaction. It does not create new credentials.
+- `POST /api/admin/blood-banks`: admin-only; standalone bank details plus `type: "bloodbank"` and `accountId` referencing an active, unassigned primary login. Requires district, address and coordinates. Creates the approved bank and assigns the selected login in one transaction. It does not create new credentials.
 - `POST /api/admin/blood-banks/:id/account`: admin-only; `accountId` assigns a pre-created, unused login to an existing approved, active bank without a primary account. No email/password fields are accepted for account creation here.
 - Row locks and the partial unique index prevent duplicate/concurrent account assignments. An audit or registration failure preserves the unassigned account for retry.
 - Login/current-user responses include `user.mustChangePassword`. `POST /api/auth/change-password` requires authentication, `currentPassword`, a strong `password`, and `confirmPassword`. It clears the first-use requirement and revokes sessions. Email/OTP recovery does the same.

@@ -156,7 +156,7 @@ try {
   await fill('.search-box input', ''); await click('Add blood bank');
   await fill('[name="name"]', 'QA New Blood Bank'); await fill('[name="district"]', 'Colombo');
   await fill('[name="contactEmail"]', 'qa.bank@example.com'); await fill('[name="contactPhone"]', '+94112345678');
-  await fill('[name="address"]', '12 Hospital Road, Colombo'); await fill('[name="branchName"]', 'Head office');
+  await fill('[name="address"]', '12 Hospital Road, Colombo');
   const primaryId = await evaluate(`[...document.querySelector('[name="accountId"]').options].find(option => option.text === 'qa.bank.login@example.com').value`);
   await fill('[name="accountId"]', primaryId);
   await wait(`typeof window.qaMapClick === 'function'`);
@@ -212,21 +212,19 @@ try {
   console.log('PASS: Donor document rejection');
 
   await go('/bank-accounts'); await click('Create bank account');
-  await fill('[name="accountEmail"]', 'qa.branch@example.com'); await fill('[name="password"]', 'BranchPassword123!');
+  await fill('[name="accountEmail"]', 'qa.standalone@example.com'); await fill('[name="password"]', 'StandalonePassword123!');
   await click('Create account'); await wait(`document.querySelector('dialog h2')?.textContent === 'Bank account created'`); await click('Add blood bank');
   await wait(`document.querySelector('dialog h2')?.textContent === 'Add a blood bank'`);
-  assert.ok(await evaluate(`document.querySelector('[name="accountId"]').selectedOptions[0].text === 'qa.branch@example.com'`), 'Account creation shortcut preselects the account in bank registration');
-  await fill('[name="name"]', 'QA Colombo Branch'); await fill('[name="district"]', 'Colombo'); await fill('[name="address"]', 'Colombo branch address');
-  const parentId = await evaluate(`[...document.querySelector('[name="parentOrganizationId"]').options].find(option => option.text.includes('QA Updated Blood Bank')).value`);
-  await fill('[name="parentOrganizationId"]', parentId); await fill('[name="branchName"]', 'Colombo branch');
+  assert.ok(await evaluate(`document.querySelector('[name="accountId"]').selectedOptions[0].text === 'qa.standalone@example.com'`), 'Account creation shortcut preselects the account in bank registration');
+  assert.equal(await evaluate(`!!document.querySelector('[name="parentOrganizationId"], [name="branchName"]')`), false, 'Bank registration does not offer parent-bank or branch fields');
+  await fill('[name="name"]', 'QA Colombo Blood Bank'); await fill('[name="district"]', 'Colombo'); await fill('[name="address"]', 'Colombo blood bank address');
   await wait(`typeof window.qaMapClick === 'function'`); await evaluate(`window.qaMapClick({ latLng: { lat: () => 6.92, lng: () => 79.86 } })`);
   await click('Add blood bank'); await wait(`document.querySelector('dialog h2')?.textContent === 'Blood bank account ready'`); await click('Done');
-  await fill('.search-box input', 'QA Colombo Branch'); await wait(`document.querySelector('tbody')?.innerText.includes('Colombo branch')`);
-  await click('QA Colombo Branch');
-  assert.ok(await evaluate(`document.querySelector('dialog').innerText.includes('QA Updated Blood Bank')`), 'Branch details show the main bank');
+  await fill('.search-box input', 'QA Colombo Blood Bank'); await wait(`document.querySelector('tbody')?.innerText.includes('QA Colombo Blood Bank')`);
+  await click('QA Colombo Blood Bank');
   assert.ok(await evaluate(`document.querySelector('dialog a[href*="google.com/maps"]').href.includes('6.92')`), 'Saved location opens Google Maps');
   await evaluate(`document.querySelector('dialog [aria-label="Close dialog"]').click()`);
-  console.log('PASS: Branch registration, parent linkage, automatic bank code and saved Google Maps location');
+  console.log('PASS: Standalone bank registration, automatic bank code and saved Google Maps location');
 
   for (const page of ['', '/blood-banks', '/approvals', '/bank-accounts']) {
     await go(page);

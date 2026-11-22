@@ -165,7 +165,7 @@ export async function confirmDonation(req: AuthRequest, res: Response) {
 }
 
 export async function institutionOverview(req: AuthRequest, res: Response) {
-  const overview = (await pool.query(`SELECT o.id, o.name, o.type, o.district, o.branch_name, o.address, o.contact_phone,
+  const overview = (await pool.query(`SELECT o.id, o.name, o.type, o.district, o.department, o.address, o.contact_phone,
     (SELECT COUNT(*)::integer FROM blood_requests WHERE organization_id = o.id AND status = 'Active' AND approval_status = 'Approved') AS active_requests,
     (SELECT COUNT(*)::integer FROM blood_requests WHERE organization_id = o.id AND status = 'Active' AND approval_status = 'Pending') AS pending_requests,
     (SELECT COALESCE(SUM(available_units), 0)::integer FROM blood_stocks WHERE organization_id = o.id) AS total_units,

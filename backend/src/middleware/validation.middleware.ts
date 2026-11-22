@@ -180,9 +180,6 @@ export const validateNetworkOrganization = validate(req => {
     }
   }
   if ((req.body.latitude === null) !== (req.body.longitude === null)) throw new HttpError(400, "Provide both latitude and longitude");
-  req.body.branchName = req.body.branchName ? text(req.body.branchName, "branch name", 100) : null;
-  req.body.parentOrganizationId = req.body.parentOrganizationId ? positiveId(req.body.parentOrganizationId) : null;
-  if (req.body.parentOrganizationId && !req.body.branchName) throw new HttpError(400, "Provide a branch name");
 });
 export const validateBankAccount = validate(req => {
   req.body.accountEmail = emailValue(req.body.accountEmail);

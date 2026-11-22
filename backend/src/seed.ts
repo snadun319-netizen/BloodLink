@@ -33,14 +33,14 @@ export async function seed(): Promise<void> {
 
     const sabHospital = (await client.query("SELECT id FROM organizations WHERE name = 'Sabaragamuwa Provincial General Hospital'")).rows[0] ||
       (await client.query(`
-        INSERT INTO organizations (name, type, district, address, contact_phone, contact_email, branch_name, latitude, longitude, verification_status, is_active)
+        INSERT INTO organizations (name, type, district, address, contact_phone, contact_email, department, latitude, longitude, verification_status, is_active)
         VALUES ('Sabaragamuwa Provincial General Hospital', 'hospital', 'Ratnapura', 'Hospital Rd, Ratnapura 70000', '+94 45 222 2261', 'sabaragamuwa.gh@health.gov.lk', 'Emergency Trauma Unit', 6.6828, 80.4034, 'approved', true)
         RETURNING id
       `)).rows[0];
 
     const teachHospital = (await client.query("SELECT id FROM organizations WHERE name = 'Teaching Hospital Ratnapura'")).rows[0] ||
       (await client.query(`
-        INSERT INTO organizations (name, type, district, address, contact_phone, contact_email, branch_name, latitude, longitude, verification_status, is_active)
+        INSERT INTO organizations (name, type, district, address, contact_phone, contact_email, department, latitude, longitude, verification_status, is_active)
         VALUES ('Teaching Hospital Ratnapura', 'hospital', 'Ratnapura', 'Main Street, Ratnapura', '+94 45 222 3444', 'th.ratnapura@health.gov.lk', 'Hematology Ward', 6.6945, 80.3980, 'approved', true)
         RETURNING id
       `)).rows[0];

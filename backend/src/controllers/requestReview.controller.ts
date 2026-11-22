@@ -9,7 +9,7 @@ export async function listRequestReviews(req: AuthRequest, res: Response) {
   const status = req.query.approvalStatus;
   if (status !== undefined && !['Pending', 'Approved', 'Rejected'].includes(status as string)) throw new HttpError(400, 'Invalid approval status');
   const requests = (await pool.query(`SELECT r.*, o.name AS organization_name, o.district,
-    o.branch_name, o.is_active AS organization_active, o.verification_status AS organization_status,
+    o.department, o.is_active AS organization_active, o.verification_status AS organization_status,
     u.email AS created_by_email, reviewer.email AS reviewed_by_email
     FROM blood_requests r JOIN organizations o ON o.id = r.organization_id
     LEFT JOIN users u ON u.id = r.created_by LEFT JOIN users reviewer ON reviewer.id = r.reviewed_by

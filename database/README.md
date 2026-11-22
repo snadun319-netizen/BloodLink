@@ -18,8 +18,10 @@ per donor, coordinate/counter constraints, and timezone-aware timestamps.
 access enabled; contact/location metadata is optional. Suspending an approved
 institution is separate from rejecting its registration and revokes staff sessions.
 
-`migration_004_bank_onboarding.sql` adds main-bank/branch relationships and a unique
-primary account per blood bank or branch. New admin-provisioned bank accounts must
+`migration_004_bank_onboarding.sql` adds the historical bank hierarchy and a unique
+primary account per bank. `migration_011_standalone_blood_banks.sql` removes the
+hierarchy, makes each blood bank standalone, and preserves hospital department labels.
+New admin-provisioned bank accounts must
 replace their temporary password. Existing accounts retain their passwords and do
 not receive a forced reset. The migration runner accepts equivalent LF/CRLF SQL
 checkouts while continuing to reject substantive changes to applied migrations.

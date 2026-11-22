@@ -8,7 +8,7 @@ import {
 } from "../controllers/admin.controller";
 import { authenticate, requireRole } from "../middleware/auth.middleware";
 import { validateRouteIds, validateAdminQuery, validateNetworkOrganization, validateOrganizationAccess, validateStaffInput } from "../middleware/validation.middleware";
-import { listNetworkOrganizations, networkOverview, networkOrganizationDetails, createNetworkOrganization, editNetworkOrganization, setNetworkOrganizationAccess, listNetworkStaff, createNetworkStaff } from "../controllers/networkAdmin.controller";
+import { listNetworkOrganizations, networkOverview, networkOrganizationDetails, createNetworkOrganization, editNetworkOrganization, setNetworkOrganizationAccess, deleteSuspendedBloodBank, listNetworkStaff, createNetworkStaff } from "../controllers/networkAdmin.controller";
 import { onboardBloodBank, createBankAccount, assignBankAccount, listBankAccounts } from "../controllers/networkAdmin.controller";
 import { validateBankAccount, validateBankOnboarding, validateBankAccountSelection } from "../middleware/validation.middleware";
 import { listRequestReviews, reviewBloodRequest } from '../controllers/requestReview.controller';
@@ -36,6 +36,7 @@ router.post("/organizations", validateNetworkOrganization, createNetworkOrganiza
 router.get("/organizations/:id", validateRouteIds, networkOrganizationDetails);
 router.patch("/organizations/:id", validateRouteIds, validateNetworkOrganization, editNetworkOrganization);
 router.patch("/organizations/:id/access", validateRouteIds, validateOrganizationAccess, setNetworkOrganizationAccess);
+router.delete("/organizations/:id", validateRouteIds, deleteSuspendedBloodBank);
 router.get("/staff", listNetworkStaff);
 router.post("/staff", validateStaffInput, createNetworkStaff);
 

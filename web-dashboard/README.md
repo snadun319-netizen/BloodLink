@@ -23,8 +23,8 @@ PowerShell can use `npm.cmd` instead of `npm`.
 ## Account-first bank setup
 
 1. In **Bank accounts**, select **Create bank account** and enter the login email and temporary password. A bank record is not required. The account is listed as **Awaiting blood bank** and cannot sign in yet.
-2. Open **Blood banks**, select **Add blood bank**, then select the account created in step 1. Only active, unassigned accounts appear. Enter the bank's name, district, address, contact details and map location. Select a main bank and enter a branch name to register a branch. BloodLink assigns a stable code such as `BL-0001`.
-3. Saving creates the approved bank and links the selected account atomically. Each bank/branch has one primary account, and each account can belong to only one bank. Invalid or failed registration leaves the pre-created account available for retry.
+2. Open **Blood banks**, select **Add blood bank**, then select the account created in step 1. Only active, unassigned accounts appear. Enter the bank's name, district, address, contact details and map location. BloodLink assigns a stable code such as `BL-0001`.
+3. Saving creates the approved bank and links the selected account atomically. Each bank has one primary account, and each account can belong to only one bank. Invalid or failed registration leaves the pre-created account available for retry.
 4. Copy the handover credentials for the doctor or bank contact. Temporary credentials remain in this admin session between account creation and assignment, and are cleared when the final handover closes, on sign-out or on reload. They never enter browser storage or backend responses. Copy them before leaving; stored passwords cannot be retrieved later.
 
 The **Add blood bank** shortcut after account creation preselects that account in registration. The manual two-tab flow works as well. Existing approved banks without a primary login can use **Assign bank account** in institution details to select a pre-created account.
@@ -68,8 +68,8 @@ Click the map to select a bank location or drag its pin. Coordinates remain edit
 ## Other workflows
 
 - Overview and aggregate stock at approved, active blood banks.
-- Bank search by name, code, branch, contact details or primary email; district/status filters; filtered CSV export.
-- Institution details, branch links, Google Maps location, stock, teammates and active requests.
+- Bank search by name, code, contact details or primary email; district/status filters; filtered CSV export.
+- Institution details, Google Maps location, stock, teammates and active requests.
 - Donor document and legacy institution approvals.
 - Institution access suspension revokes all its staff sessions; reactivation requires signing in again.
 
@@ -89,7 +89,7 @@ Browser scripts accept `CHROMIUM_PATH` pointing to an installed Chrome/Chromium 
 
 The institution tabs include stock status filters, group search and stock sorting; request collection progress; private message history; and team search, access filters and account setup status. Their styles are scoped to the operational tabs so the dashboard overview keeps its existing appearance. On narrow screens, table rows become labeled records. The institution browser suite checks these controls, persisted writes, teammate suspension/reactivation, and layouts from 320px through desktop widths.
 
-Browser checks use an isolated Chromium profile and intercept HTTP requests with test-only fixtures. Google's SDK is simulated to test map click/drag callbacks without external requests or billing. They cover login, account creation before bank registration, account selection and credential handover, branches, existing-bank assignment, suspension/reactivation, donor rejection, CSV export, keyboard dialogs, mobile navigation and four routes at 320/390/768/1024/1440px. They do not contact the live API or validate a real Google Maps key.
+Browser checks use an isolated Chromium profile and intercept HTTP requests with test-only fixtures. Google's SDK is simulated to test map click/drag callbacks without external requests or billing. They cover login, account creation before bank registration, account selection and credential handover, standalone bank registration, existing-bank assignment, suspension/reactivation, donor rejection, CSV export, keyboard dialogs, mobile navigation and four routes at 320/390/768/1024/1440px. They do not contact the live API or validate a real Google Maps key.
 
 ```powershell
 $env:CHROMIUM_PATH = 'C:\path\to\chrome.exe'
