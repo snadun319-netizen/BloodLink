@@ -9,9 +9,12 @@
   "scripts": {
     "dev": "node --watch -r ts-node/register src/index.ts",
     "seed": "ts-node src/seed.ts",
+    "seed:stocks": "ts-node src/seedStocks.ts",
+    "seed:donors": "ts-node src/seedDonors.ts",
+    "test:matching": "ts-node src/test_donor_matching.ts",
     "migrate": "ts-node src/migrate.ts",
     "type-check": "tsc --noEmit",
-    "test": "ts-node src/test_auth_flows.ts && node --test tests/mobile-api.test.cjs tests/requests-api.test.cjs",
+    "test": "ts-node src/test_auth_flows.ts && ts-node src/test_donor_matching.ts && node --test tests/mobile-api.test.cjs tests/requests-api.test.cjs",
     "test:auth": "ts-node src/test_auth_flows.ts",
     "build": "tsc",
     "start": "node dist/index.js",

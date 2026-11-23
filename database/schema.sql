@@ -61,6 +61,7 @@ CREATE TABLE donor_profiles (
   date_of_birth DATE,
   blood_group VARCHAR(5) CHECK (blood_group IN ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-')),
   is_available BOOLEAN NOT NULL DEFAULT true,
+  address TEXT,
   district VARCHAR(50),
   latitude NUMERIC(10, 7),
   longitude NUMERIC(10, 7),

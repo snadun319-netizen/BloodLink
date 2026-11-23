@@ -123,7 +123,7 @@ async function main() {
   check((await post("/login", { password: "x".repeat(70000) })).status === 413, "Oversized bodies return 413");
   check((await post("/refresh", { refreshToken: {} })).status === 400, "Invalid refresh token type rejected");
   check((await api("/api/admin/stats")).status === 401, "Admin endpoints require authentication");
-  const input = { email: "donor@example.com", password: "Password123!", fullName: "Test Donor", phone: "0771234567", nic: "199012345678", bloodGroup: "A+", dob: "1990-04-10" };
+  const input = { email: "donor@example.com", password: "Password123!", fullName: "Test Donor", phone: "0771234567", nic: "199012345678", bloodGroup: "A+", dob: "1990-04-10", district: "Ratnapura" };
   resetLimits();
   check((await post("/register", input)).status === 400, "Registration cannot bypass email verification");
   check((await post("/register", { ...input, registrationToken: "a".repeat(64) })).status === 400, "Forged registration proof rejected");
@@ -246,11 +246,15 @@ async function main() {
   const submitted = await api("/api/donors/submit", { documentUrl: privateDocumentUrl, claimedBloodGroup: "O+" }, donorToken);
   check(submitted.status === 201, "Donor document submission succeeds");
   check((await api("/api/donors/submit", { documentUrl: privateDocumentUrl, claimedBloodGroup: "O+" }, donorToken)).status === 409, "Duplicate pending verification rejected");
-  check((await api("/api/donors/admin/pending", undefined, adminToken)).status === 200, "Admin can list pending reviews");
-  check((await api("/api/donors/admin/" + submitted.data.verification.id + "/approve", {}, adminToken, "PATCH")).status === 200, "Admin approval succeeds");
+  const reviewingBank = (await db.query("INSERT INTO organizations(name,type,district,verification_status) VALUES('District Review Test Bank','bloodbank','Ratnapura','approved') RETURNING id")).rows[0];
+  const reviewer = (await db.query("INSERT INTO users(email,password_hash,role,organization_id,is_bank_account) VALUES('district.reviewer@example.com',$1,'bloodbank_staff',$2,true) RETURNING id",[hash,reviewingBank.id])).rows[0];
+  const reviewerToken = (await issueTokenPair({ id: String(reviewer.id), role: 'bloodbank_staff', orgId: String(reviewingBank.id) })).accessToken;
+  check((await api("/api/donors/district-admin/pending", undefined, adminToken)).status === 403, "Platform admin cannot bypass district review permissions");
+  check((await api("/api/donors/district-admin/pending", undefined, reviewerToken)).data.verifications.some((row: any) => row.id === submitted.data.verification.id), "District bank admin can list its pending donor reviews");
+  check((await api("/api/donors/district-admin/" + submitted.data.verification.id + "/approve", {}, reviewerToken, "PATCH")).status === 200, "District bank approval succeeds");
   const verifiedProfile = (await db.query("SELECT blood_group, blood_group_verified FROM donor_profiles WHERE user_id = $1", [id])).rows[0];
   check(verifiedProfile.blood_group === "O+" && verifiedProfile.blood_group_verified, "Approval atomically updates verified blood group");
-  check((await api("/api/donors/admin/" + submitted.data.verification.id + "/approve", {}, adminToken, "PATCH")).status === 404, "Repeated approval rejected");
+  check((await api("/api/donors/district-admin/" + submitted.data.verification.id + "/approve", {}, reviewerToken, "PATCH")).status === 404, "Repeated approval rejected");
 
   resetLimits();
   const org = await api("/api/organizations/register", { name: "Test Hospital", type: "hospital" });
