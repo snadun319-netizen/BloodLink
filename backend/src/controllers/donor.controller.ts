@@ -24,6 +24,7 @@ export async function profileData(donorId: string) {
   if (!row) throw new HttpError(404, 'Donor profile not found');
   return {
     id: String(row.user_id), fullName: row.full_name || '', phone: row.phone || '', district: row.district || '',
+    city: row.city || '', province: row.province || '', address: row.address || '',
     hasMatchingLocation: row.latitude != null && row.longitude != null,
     donorSince: row.donor_since, bloodGroup: row.blood_group, isAvailable: row.is_available && row.consent_status==='granted'
       && row.consent_recorded_at && new Date(row.consent_recorded_at).getTime()<=Date.now()

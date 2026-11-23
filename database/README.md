@@ -45,6 +45,11 @@ verification. The mobile signup flow now requires a district. Pending submission
 reviewed by the primary admin of the approved blood bank in that district. Donor document
 review is handled in the blood bank workspace.
 
+`migration_012_donor_address.sql` adds an optional donor residential address. City
+and province are already supported by migration 009. Outreach matches by coordinates
+and request radius, rather than district labels or an assigned blood bank. Development
+test profiles can be populated separately with `npm run seed:donors` (see backend README).
+
 Run the API with a limited database role, not a PostgreSQL superuser. Use a separate
 migration owner and a separate CREATEDB-capable test account. Production backups, database
 TLS, document access control, retention policies, and monitoring require deployment setup.

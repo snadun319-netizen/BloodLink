@@ -83,6 +83,67 @@ their actual external environments.
 existing passwords and never logs credentials. `SEED_DEMO_DATA=true` works only with
 `NODE_ENV=development` and creates demo accounts with random unknown passwords.
 
+Run `npm run seed:stocks` with `NODE_ENV=development` to fill missing inventory
+records at every existing blood bank with sample quantities for all eight blood
+groups. Each empty bank receives four safe (`Normal`, 10+ units), two low (3–9
+units), and two critical (0–2 units) groups, with quantities and shortages varying
+by bank. Existing stock records are preserved, so rerunning is safe. These are
+synthetic development quantities, not measured clinical inventory; this command
+is separate from migrations and bank onboarding and refuses other environments.
+
+`npm run seed:donors` requires `NODE_ENV=development`, a migrated database and a
+strong `TEST_DONOR_PASSWORD`. It creates 14 simulated donors near each existing
+blood bank: one eligible donor per blood group and six O+ exclusion cases. The
+current six-bank setup therefore gets 84 new accounts. It also completes existing
+explicitly simulated donor profiles, preserving their passwords, blood groups,
+districts and any existing contact/location details. Real donor profiles are untouched.
+Optional residential addresses are stored by `migration_012_donor_address.sql`;
+the private donor profile API also returns city, province and address.
+
+| Account suffix | State | Expected request behavior |
+| --- | --- | --- |
+| `eligible.apos`, `eligible.aneg`, `eligible.bpos`, `eligible.bneg`, `eligible.abpos`, `eligible.abneg`, `eligible.opos`, `eligible.oneg` | Active, verified, available, consented, donation interval passed | Matching blood group within request radius |
+| `unavailable` | Active account, availability off | No matches |
+| `suspended` | Suspended account | Cannot log in; no matches |
+| `unverified` | Blood group unverified | No matches |
+| `recent` | Donation seven days ago; next eligible date in future | No matches |
+| `stale` | Availability last confirmed 31 days ago | No matches until reconfirmed |
+| `withdrawn` | Outreach consent withdrawn | No matches |
+
+Emails use `qa.bank.<bank ID>.<suffix>@example.com`. New accounts use the supplied
+`TEST_DONOR_PASSWORD`; existing account passwords are never reset. All profiles have
+synthetic NICs, phone numbers, dates of birth, addresses, city/province/district and
+coordinates approximately 0.3–2.2 km from their bank. No gender field is needed.
+These are test identities; external push delivery is suppressed for simulated donors.
+The seed corrects the known erroneous Ratnapura fixture coordinates only while they
+still equal the original bad values; the replacement is an approximate town centre
+([GeoNames](https://www.geonames.org/1228730/ratnapura.html)), not a surveyed bank pin.
+
+Ordinary reruns preserve seeded profiles and passwords. Use
+`npm run seed:donors -- --refresh` to restore fixture availability, consent, verification
+and donation-date scenarios after testing, or to renew the 30-day freshness window.
+This explicitly resets simulated donor scenario fields, while retaining contact details
+and passwords. Required district/location templates currently cover the six bank towns
+and the ten existing test-donor districts; add a template before seeding another area.
+
+For a manual location test, sign in as Ratnapura staff, submit an O+ request with a
+20 km radius, and approve it as the platform administrator. Approval dispatches
+notifications. Sign in as `qa.bank.7.eligible.opos@example.com` in the current local
+database: the request should appear. The corresponding Jaffna account
+`qa.bank.12.eligible.opos@example.com` should not see it and cannot accept it through
+the API. The six exclusion accounts should not receive it either. Donors are not
+permanently assigned to banks: matching uses coordinates and the selected radius,
+so a donor may receive requests from multiple nearby banks. The distance is straight
+line distance, not road travel time. The default radius is 20 km; a deliberately larger
+radius can include more distant donors.
+
+`npm run test:matching` verifies fixture repeatability, existing-data preservation,
+all blood groups at all six banks, distance/radius exclusions, missing coordinates,
+consent/availability/verification/donation interval, approval/expiry, notifications,
+and HTTP login/request visibility/acceptance. It uses a disposable database and needs
+the same CREATEDB-capable test account as `npm test`; existing application data is
+not used for these checks. The matching suite is also included in `npm test`.
+
 Network administration (existing `admin` role) adds the following protected endpoints:
 
 | Method | Path | Purpose |
