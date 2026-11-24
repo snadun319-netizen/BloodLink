@@ -30,6 +30,8 @@ export interface MissionStep {
 export interface ActiveMission {
   id: string;
   hospitalName: string;
+  address?: string;
+  location?: { latitude: number; longitude: number } | null;
   unitDepartment: string;
   bloodGroup: string;
   unitsNeeded: number;

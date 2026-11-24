@@ -6,6 +6,7 @@ import { Badge, BankIdentity, Empty, Evidence, Modal, formatDate } from './compo
 import { bankCode, bankStatus, DISTRICTS } from './types';
 import type { Organization, Details, BankAccount } from './types';
 import { LocationPicker } from './LocationPicker';
+import { readPoint } from './googleMaps';
 
 export function Confirm({ title, description, label, onConfirm, onClose, danger = false, reason = false }: {
   title: string; description: string; label: string; onConfirm: (reason: string) => Promise<void>; onClose: () => void; danger?: boolean; reason?: boolean;
@@ -34,23 +35,27 @@ export function BankForm({ bank, onClose }: { bank?: Organization; onClose: () =
   const { data, mutate, busy, credentials, forgetCredentials } = useDashboard(); const [error, setError] = useState('');
   const [params] = useSearchParams();
   const [latitude, setLatitude] = useState(bank?.latitude ?? ''); const [longitude, setLongitude] = useState(bank?.longitude ?? '');
+  const [name, setName] = useState(bank?.name || ''), [district, setDistrict] = useState(bank?.district || ''), [address, setAddress] = useState(bank?.address || '');
+  const [locationEditing, setLocationEditing] = useState(!readPoint(bank?.latitude ?? '', bank?.longitude ?? ''));
   const [handover, setHandover] = useState<{ email: string; accountId: number; bank: Organization } | null>(null);
   if (handover) return <AccountHandover email={handover.email} password={credentials[handover.accountId]?.password} bank={handover.bank} onClose={() => { forgetCredentials(handover.accountId); onClose(); }} />;
   return <Modal wide title={bank ? 'Edit blood bank' : 'Add a blood bank'} subtitle={bank ? 'Keep the bank details up to date.' : 'Select a created account, then enter the bank details.'} onClose={() => { if (!busy) onClose(); }}>
     <form onSubmit={async event => {
       event.preventDefault(); setError(''); const fields = Object.fromEntries(new FormData(event.currentTarget));
+      if (locationEditing) { setError('Confirm the bank location, or cancel location selection, before saving.'); return; }
+      if (!bank && !readPoint(latitude, longitude)) { setError('Choose and confirm the blood bank location.'); return; }
+      if (!address.trim()) { setError('Confirm a map location with an address before saving.'); return; }
       try {
-        const result = await mutate<{ organization: Organization; user: BankAccount }>(bank ? `/admin/organizations/${bank.id}` : '/admin/blood-banks', { ...fields, type: 'bloodbank' }, bank ? 'Blood bank details updated.' : 'Blood bank added and account linked.', bank ? 'PATCH' : 'POST');
+        const result = await mutate<{ organization: Organization; user: BankAccount }>(bank ? `/admin/organizations/${bank.id}` : '/admin/blood-banks', { ...fields, address: address.trim(), type: 'bloodbank' }, bank ? 'Blood bank details updated.' : 'Blood bank added and account linked.', bank ? 'PATCH' : 'POST');
         if (bank) onClose(); else setHandover({ email: result.user.email, accountId: result.user.id, bank: result.organization });
       } catch (err) { setError((err as Error).message); }
     }}><div className="modal-body form-stack">{!bank && <><div className="form-section-title"><Mail size={17} />Select the account you created</div><AccountSelection selectedId={params.get('account') || undefined} /></>}<div className="form-section-title"><Building2 size={17} />Bank details</div><div className="form-grid">
-      <label className="field-full">Blood bank name (required)<input name="name" required maxLength={255} defaultValue={bank?.name} placeholder="e.g. Ratnapura Regional Blood Bank" /></label>
+      <label className="field-full">Blood bank name (required)<input name="name" required maxLength={255} value={name} onChange={event => setName(event.target.value)} placeholder="e.g. Ratnapura Regional Blood Bank" /></label>
       <label>BloodLink code<input readOnly value={bank ? bankCode(bank) : 'Assigned automatically after registration'} /></label>
-      <label>District (required)<select name="district" required defaultValue={bank?.district || ''}><option value="">Select district</option>{DISTRICTS.map(d => <option key={d}>{d}</option>)}</select></label>
+      <label>District (required)<select name="district" required value={district} onChange={event => setDistrict(event.target.value)}><option value="">Select district</option>{DISTRICTS.map(d => <option key={d}>{d}</option>)}</select></label>
       <label>Contact phone<input name="contactPhone" type="tel" maxLength={20} defaultValue={bank?.contact_phone || ''} placeholder="+94 11 234 5678" /></label>
-      <label className="field-full">Address (required)<textarea name="address" required maxLength={2000} rows={2} defaultValue={bank?.address || ''} placeholder="Street address and city" /></label>
       <label className="field-full">Contact email<input name="contactEmail" type="email" maxLength={255} defaultValue={bank?.contact_email || ''} placeholder="coordinator@example.com" /></label>
-    </div><div className="form-section-title"><MapPin size={17} />Select bank location</div><LocationPicker latitude={latitude} longitude={longitude} required={!bank} onChange={(lat, lng) => { setLatitude(lat); setLongitude(lng); }} />
+    </div><div className="form-section-title"><MapPin size={17} />Select bank location</div><LocationPicker latitude={latitude} longitude={longitude} address={address} searchHint={[name || 'blood bank', district].filter(Boolean).join(' ')} required={!bank} onEditingChange={setLocationEditing} onChange={(lat, lng, selectedAddress) => { setLatitude(lat); setLongitude(lng); setAddress(selectedAddress); setError(''); }} />
     {!bank && <div className="info-banner"><ShieldCheck size={17} /><p>Adding this blood bank links the selected account and approves the bank. You can then copy its credentials for the bank contact.</p></div>}
     <label>Registration evidence (optional)<input name="registrationEvidenceUrl" maxLength={2048} defaultValue={bank?.registration_evidence_url || ''} placeholder="https://example.com/document.pdf or uploads/document.pdf" /></label>
     {error && <p className="error-message" role="alert">{error}</p>}</div><div className="modal-footer"><button className="button secondary" type="button" disabled={busy} onClick={onClose}>Cancel</button><button className="button primary" disabled={busy || (!bank && !data.accounts.some(account => account.organization_id === null && account.status === 'active'))}>{busy ? <LoaderCircle className="spin" size={17} /> : bank ? <Check size={17} /> : <Plus size={17} />}{bank ? 'Save changes' : 'Add blood bank'}</button></div></form>

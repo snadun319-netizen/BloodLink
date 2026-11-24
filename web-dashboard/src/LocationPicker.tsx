@@ -1,77 +1,138 @@
 import { useEffect, useRef, useState } from 'react';
-import { ExternalLink, LoaderCircle, MapPin, Navigation } from 'lucide-react';
+import { Check, ExternalLink, LoaderCircle, MapPin, Navigation, Search } from 'lucide-react';
+import { addressAt, isSriLankaPoint, loadMaps, readPoint, sriLankaBounds } from './googleMaps';
+import type { MapEvent, MapsApi, MapInstance, Place, Point } from './googleMaps';
 
-type Point = { lat: number; lng: number };
-type MapEvent = { latLng?: { lat(): number; lng(): number } };
-type MapInstance = { panTo(point: Point): void; addListener(event: string, callback: (event: MapEvent) => void): { remove(): void } };
-type MarkerInstance = { position: Point | null; map: MapInstance | null; addListener(event: string, callback: (event: MapEvent) => void): { remove(): void } };
-type MapsApi = {
-  Map: new (element: HTMLElement, options: object) => MapInstance;
-  marker: { AdvancedMarkerElement: new (options: object) => MarkerInstance };
-};
-declare global {
-  interface Window { google?: { maps: MapsApi }; bloodlinkMapReady?: () => void; gm_authFailure?: () => void }
-}
-let mapLoad: Promise<MapsApi> | null = null;
-function loadMaps(): Promise<MapsApi> {
-  if (window.google?.maps.marker) return Promise.resolve(window.google.maps);
-  if (mapLoad) return mapLoad;
-  mapLoad = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    const timer = window.setTimeout(() => reject(new Error('Google Maps could not load. Enter coordinates below or try again later.')), 20000);
-    window.bloodlinkMapReady = () => { window.clearTimeout(timer); resolve(window.google!.maps); };
-    window.gm_authFailure = () => { window.clearTimeout(timer); window.dispatchEvent(new Event('bloodlink-map-error')); reject(new Error('Google Maps is unavailable. Enter coordinates below.')); };
-    script.onerror = () => { window.clearTimeout(timer); reject(new Error('Google Maps could not load. Enter coordinates below.')); };
-    script.src = `https://maps.googleapis.com/maps/api/js?${new URLSearchParams({ key: import.meta.env.VITE_GOOGLE_MAPS_API_KEY, v: 'weekly', loading: 'async', libraries: 'marker', callback: 'bloodlinkMapReady' })}`;
-    script.async = true;
-    document.head.append(script);
-  });
-  return mapLoad;
-}
-
-export function LocationPicker({ latitude, longitude, onChange, required = false }: {
-  latitude: string; longitude: string; onChange: (latitude: string, longitude: string) => void; required?: boolean;
+type Selection = { point: Point; name: string; address: string };
+export function LocationPicker({ latitude, longitude, address = '', searchHint = '', onChange, onEditingChange, required = false }: {
+  latitude: string; longitude: string; address?: string; searchHint?: string;
+  onChange: (latitude: string, longitude: string, address: string) => void; required?: boolean;
+  onEditingChange?: (editing: boolean) => void;
 }) {
-  const host = useRef<HTMLDivElement>(null);
-  const map = useRef<MapInstance | null>(null); const marker = useRef<MarkerInstance | null>(null);
-  const onSelect = useRef(onChange);
-  const [state, setState] = useState(import.meta.env.VITE_GOOGLE_MAPS_API_KEY || window.google?.maps.marker ? 'loading' : 'unconfigured');
-  const [error, setError] = useState('');
-  const point = latitude !== '' && longitude !== '' && Number.isFinite(Number(latitude)) && Number.isFinite(Number(longitude)) && Math.abs(Number(latitude)) <= 90 && Math.abs(Number(longitude)) <= 180 ? { lat: Number(latitude), lng: Number(longitude) } : null;
-  const currentPoint = useRef(point);
-  useEffect(() => { onSelect.current = onChange; currentPoint.current = point; });
+  const point = readPoint(latitude, longitude);
+  const [editing, setEditing] = useState(!point);
+  const [selection, setSelection] = useState<Selection | null>(point ? { point, name: 'Selected bank location', address } : null);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Place[]>([]);
+  const [state, setState] = useState<'loading' | 'ready' | 'unconfigured' | 'error'>('loading');
+  const [working, setWorking] = useState(false), [searching, setSearching] = useState(false);
+  const [error, setError] = useState(''), [notice, setNotice] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const host = useRef<HTMLDivElement>(null), map = useRef<MapInstance | null>(null);
+  const marker = useRef<InstanceType<MapsApi['marker']['AdvancedMarkerElement']> | null>(null);
+  const sdk = useRef<MapsApi | null>(null), lookup = useRef<AbortController | null>(null);
+  const serial = useRef(0), searchSerial = useRef(0), selectOnMap = useRef<(event: MapEvent) => void>(() => {});
+  const initialPoint = useRef(point);
+  useEffect(() => { onEditingChange?.(editing); }, [editing, onEditingChange]);
+
+  function showSelection(next: Selection) {
+    setSelection(next);
+    if (marker.current) marker.current.position = next.point;
+    map.current?.panTo(next.point); map.current?.setZoom?.(16);
+  }
+  function cancelLookup() { serial.current++; lookup.current?.abort(); setWorking(false); }
+  async function choosePin(event: MapEvent) {
+    if (!event.latLng) return;
+    event.stop?.();
+    const selectedPoint = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+    if (!isSriLankaPoint(selectedPoint)) { setError('Choose a blood bank location in Sri Lanka.'); return; }
+    cancelLookup(); const current = serial.current;
+    const controller = new AbortController(); lookup.current = controller;
+    setError(''); setNotice(''); setWorking(true);
+    showSelection({ point: selectedPoint, name: 'Bank entrance pin', address: '' });
+    try {
+      if (event.placeId && sdk.current) {
+        const place = new sdk.current.places.Place({ id: event.placeId });
+        await place.fetchFields({ fields: ['displayName', 'formattedAddress'] });
+        if (current === serial.current) showSelection({ point: selectedPoint, name: place.displayName || 'Selected blood bank', address: place.formattedAddress || '' });
+      } else {
+        const foundAddress = await addressAt(selectedPoint, controller.signal);
+        if (current === serial.current) setSelection({ point: selectedPoint, name: 'Bank entrance pin', address: foundAddress });
+      }
+    } catch {
+      if (current === serial.current) setNotice('The address could not be retrieved. Enter the address below and confirm the pin.');
+    } finally { if (current === serial.current) setWorking(false); }
+  }
+  useEffect(() => { selectOnMap.current = event => { void choosePin(event); }; });
   useEffect(() => {
-    if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY && !window.google?.maps.marker) return;
+    if (!editing) return;
+    if (!import.meta.env.VITE_GOOGLE_MAPS_API_KEY && !window.google?.maps.places) { setState('unconfigured'); return; }
     let active = true; const listeners: { remove(): void }[] = [];
-    const authFailure = () => { setState('error'); setError('Google Maps is unavailable. Enter coordinates below.'); };
+    setState('loading');
+    const authFailure = () => { if (active) { setState('error'); setError('Google Maps could not authorize this key. Check its settings or try again.'); } };
     window.addEventListener('bloodlink-map-error', authFailure);
     void loadMaps().then(api => {
       if (!active || !host.current) return;
-      const start = currentPoint.current;
-      map.current = new api.Map(host.current, { center: start || { lat: 7.8731, lng: 80.7718 }, zoom: start ? 15 : 7, mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID', streetViewControl: false, mapTypeControl: false, fullscreenControl: false, gestureHandling: 'cooperative' });
-      marker.current = new api.marker.AdvancedMarkerElement({ map: map.current, position: start, title: 'Blood bank location. Drag to adjust.', gmpDraggable: true });
-      const select = (event: MapEvent) => { if (event.latLng) onSelect.current(event.latLng.lat().toFixed(7), event.latLng.lng().toFixed(7)); };
-      listeners.push(map.current.addListener('click', select), marker.current.addListener('dragend', select));
+      sdk.current = api;
+      const start = initialPoint.current;
+      map.current = new api.Map(host.current, { center: start || { lat: 7.8731, lng: 80.7718 }, zoom: start ? 16 : 7,
+        mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID', streetViewControl: false, mapTypeControl: true,
+        fullscreenControl: false, gestureHandling: 'cooperative' });
+      marker.current = new api.marker.AdvancedMarkerElement({ map: map.current, position: start, title: 'Drag to the blood bank entrance', gmpDraggable: true });
+      listeners.push(map.current.addListener('click', event => selectOnMap.current(event)), marker.current.addListener('dragend', event => selectOnMap.current(event)));
       setState('ready');
-    }).catch(err => { if (active) { setState('error'); setError(err.message); } });
-    return () => { active = false; window.removeEventListener('bloodlink-map-error', authFailure); listeners.forEach(listener => listener.remove()); if (marker.current) marker.current.map = null; marker.current = null; map.current = null; };
-  }, []);
-  useEffect(() => {
-    if (marker.current) marker.current.position = point;
-    if (point) map.current?.panTo(point);
-  }, [latitude, longitude, state]); // eslint-disable-line react-hooks/exhaustive-deps
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(point ? `${point.lat},${point.lng}` : 'blood banks Sri Lanka')}`;
+    }).catch(() => { if (active) { setState('error'); setError('Google Maps could not load. Check your connection and try again.'); } });
+    return () => {
+      active = false; serial.current++; searchSerial.current++; lookup.current?.abort();
+      window.removeEventListener('bloodlink-map-error', authFailure); listeners.forEach(listener => listener.remove());
+      if (marker.current) marker.current.map = null;
+      marker.current = null; map.current = null;
+    };
+  }, [editing, attempt]);
+
+  async function search() {
+    const text = query.trim() || searchHint.trim();
+    if (!text || !sdk.current) return;
+    const current = ++searchSerial.current;
+    setSearching(true); setError(''); setNotice(''); setResults([]);
+    try {
+      const response = await sdk.current.places.Place.searchByText({ textQuery: `${text} Sri Lanka`, fields: ['id', 'displayName', 'formattedAddress', 'location'],
+        locationRestriction: sriLankaBounds, language: 'en', region: 'LK', maxResultCount: 5 });
+      if (current !== searchSerial.current) return;
+      const found = response.places.filter(place => place.location && isSriLankaPoint({ lat: place.location.lat(), lng: place.location.lng() }));
+      setResults(found);
+      if (!found.length) setNotice('No places found. Try a town or hospital name, or place a pin at the bank entrance.');
+    } catch { if (current === searchSerial.current) setError('Place search is unavailable. Try again, or choose the bank entrance on the map.'); }
+    finally { if (current === searchSerial.current) setSearching(false); }
+  }
+  function closeEditor() {
+    cancelLookup(); searchSerial.current++; setSearching(false); setEditing(false); setError(''); setNotice(''); setResults([]);
+  }
+  function openEditor() {
+    const saved = readPoint(latitude, longitude); initialPoint.current = saved;
+    setSelection(saved ? { point: saved, name: 'Selected bank location', address } : null);
+    setQuery(searchHint); setWorking(false); setEditing(true);
+  }
+
   return <div className="location-picker">
-    <div className="location-map" ref={host} aria-label="Select the blood bank location on Google Maps" />
-    {state === 'loading' && <p className="location-message" role="status"><LoaderCircle size={17} className="spin" />Loading Google Maps…</p>}
-    {state === 'unconfigured' && <div className="location-message"><MapPin size={21} /><p>Open Google Maps to find the bank, then enter its coordinates below. The map picker will appear here when Google Maps is connected.</p></div>}
-    {state === 'error' && <p className="error-message" role="alert">{error}</p>}
-    {state === 'ready' && <p className="section-note">Click the map to place a pin, or drag the pin to the bank entrance.</p>}
-    <div className="location-actions"><a className="text-link" href={mapsUrl} target="_blank" rel="noopener noreferrer">Open Google Maps<ExternalLink size={14} /></a><button type="button" className="text-button" onClick={() => {
-      if (!navigator.geolocation) { setError('Your browser cannot provide a location. Select it on the map or enter coordinates.'); return; }
-      navigator.geolocation.getCurrentPosition(position => { setError(''); onChange(position.coords.latitude.toFixed(7), position.coords.longitude.toFixed(7)); }, () => setError('Location permission was unavailable. Select the bank on the map or enter coordinates.'));
-    }}><Navigation size={14} />Use my location</button></div>
-    {error && state !== 'error' && <p className="error-message" role="alert">{error}</p>}
-    <div className="form-grid"><label>Latitude{required && ' (required)'}<input name="latitude" type="number" min="-90" max="90" step="any" required={required} value={latitude} onChange={event => onChange(event.target.value, longitude)} placeholder="6.9271" /></label><label>Longitude{required && ' (required)'}<input name="longitude" type="number" min="-180" max="180" step="any" required={required} value={longitude} onChange={event => onChange(latitude, event.target.value)} placeholder="79.8612" /></label></div>
+    <input type="hidden" name="latitude" value={latitude} /><input type="hidden" name="longitude" value={longitude} />
+    {!editing && <div className="location-summary"><MapPin size={24} /><div><strong>{point ? 'Bank location selected' : 'Choose the blood bank location'}</strong><p>{point ? address || 'Choose Change location to confirm the bank address.' : 'Search for the bank or place a pin at its entrance.'}</p>
+      {point && <a className="text-link" href={`https://www.google.com/maps/search/?api=1&query=${point.lat},${point.lng}`} target="_blank" rel="noopener noreferrer">View selected location<ExternalLink size={14} /></a>}</div>
+      <button type="button" className="button secondary" onClick={openEditor}>{point ? 'Change location' : 'Choose location'}</button></div>}
+    {editing && <section aria-label="Choose blood bank location" className="location-editor">
+      <div className="location-search"><label>Search for a blood bank or hospital<input value={query} placeholder={searchHint || 'e.g. Ratnapura blood bank'} onChange={event => { searchSerial.current++; setSearching(false); setResults([]); setQuery(event.target.value); }} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); void search(); } }} /></label>
+        <button type="button" className="button secondary" disabled={state !== 'ready' || searching || !(query.trim() || searchHint.trim())} onClick={() => void search()}>{searching ? <LoaderCircle className="spin" size={16} /> : <Search size={16} />}Search</button></div>
+      {results.length > 0 && <ul className="location-results" aria-label="Place search results">{results.map(place => <li key={place.id}><button type="button" onClick={() => {
+        cancelLookup(); setNotice(''); setError(''); showSelection({ point: { lat: place.location!.lat(), lng: place.location!.lng() }, name: place.displayName || 'Selected blood bank', address: place.formattedAddress || '' });
+      }}><MapPin size={18} /><span><strong>{place.displayName || 'Blood bank'}</strong><small>{place.formattedAddress}</small></span></button></li>)}</ul>}
+      <div className="location-map" ref={host} aria-label="Select the blood bank entrance on the map" />
+      {state === 'loading' && <p className="location-message" role="status"><LoaderCircle size={17} className="spin" />Loading map…</p>}
+      {state === 'unconfigured' && <p className="location-message">The map is not connected. Configure the browser Maps key to choose a location.</p>}
+      {state === 'error' && <button type="button" className="text-button" onClick={() => { setError(''); setAttempt(value => value + 1); }}>Retry map</button>}
+      {state === 'ready' && <p className="section-note">Select a search result or click the map. Drag the pin to the entrance donors should use.</p>}
+      {error && <p className="error-message" role="alert">{error}</p>}
+      {notice && <p className="section-note" role="status">{notice}</p>}
+      {selection && <div className="location-confirmation"><strong>Is this the correct blood bank location?</strong><p>{selection.name}</p>
+        {working && <p role="status"><LoaderCircle className="spin" size={16} />Finding the address…</p>}
+        <label>Address for this location<textarea aria-label="Address for selected location" rows={2} maxLength={2000} value={selection.address} onChange={event => setSelection({ ...selection, address: event.target.value })} placeholder="Street address and city" /></label>
+        <button type="button" className="button primary" disabled={working || !selection.address.trim()} onClick={() => {
+          onChange(selection.point.lat.toFixed(7), selection.point.lng.toFixed(7), selection.address.trim()); closeEditor();
+        }}><Check size={16} />Confirm this location</button></div>}
+      <div className="location-actions"><button type="button" className="text-button" disabled={working || state !== 'ready'} onClick={() => {
+        if (!navigator.geolocation) { setError('Location sharing is unavailable in this browser. Search for the bank instead.'); return; }
+        navigator.geolocation.getCurrentPosition(position => { void choosePin({ latLng: { lat: () => position.coords.latitude, lng: () => position.coords.longitude } }); }, () => setError('Location sharing was unavailable. Search for the bank instead.'), { timeout: 10000 });
+      }}><Navigation size={14} />Use my location</button><button type="button" className="text-button" onClick={closeEditor}>Cancel location selection</button></div>
+    </section>}
+    {required && !point && !editing && <p className="section-note">Choose and confirm a location before adding this bank.</p>}
   </div>;
 }
