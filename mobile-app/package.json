@@ -34,6 +34,7 @@
     "test:birth-date": "node --test tests/birth-date.test.cjs",
     "test:registration": "node --test tests/registration.test.cjs",
     "test:requests": "node --test tests/requests.test.cjs",
+    "test:directions": "node --test tests/directions.test.cjs",
     "test:features": "node --test tests/features.test.cjs",
     "test:pdf": "node --test tests/pdfTemplates.test.cjs"
   },

@@ -26,7 +26,7 @@ export async function getRequestsPageData(req: AuthRequest, res: Response) {
   if (!donor) throw new HttpError(404, 'Donor profile not found');
   const candidates = await matchedRequests(donorId);
   const mission = (await pool.query(`SELECT n.request_id, n.responded_at, r.blood_group, r.required_units,
-    o.name, o.department, o.contact_phone FROM notifications n
+    o.name, o.department, o.contact_phone, o.address, o.latitude, o.longitude FROM notifications n
     JOIN blood_requests r ON r.id = n.request_id JOIN organizations o ON o.id = r.organization_id
     WHERE n.donor_id = $1 AND n.response_status = 'accepted' AND n.closed_at IS NULL
       AND r.status = 'Active' AND (r.expires_at IS NULL OR r.expires_at>NOW()) AND r.approval_status = 'Approved' AND o.is_active AND o.verification_status = 'approved' LIMIT 1`, [donorId])).rows[0];
@@ -59,6 +59,8 @@ export async function getRequestsPageData(req: AuthRequest, res: Response) {
     activeCount: mission ? 1 : 0, alerts, emptyState,
     activeMission: mission ? {
       id: String(mission.request_id), hospitalName: mission.name, unitDepartment: mission.department || '',
+      address: mission.address || '',
+      location: mission.latitude != null && mission.longitude != null ? { latitude: Number(mission.latitude), longitude: Number(mission.longitude) } : null,
       bloodGroup: groupLabel(mission.blood_group), unitsNeeded: mission.required_units,
       estimatedArrival: 'Contact the institution', status: 'En Route', coordinatorName: 'Donation coordinator',
       coordinatorPhone: mission.contact_phone || '',

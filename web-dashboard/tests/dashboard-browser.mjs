@@ -105,12 +105,24 @@ try {
   await send('Fetch.enable', { patterns: [{ urlPattern: 'http://localhost:4000/api/*' }] });
   // Stand in for Google's SDK so map callbacks are tested without billing or external requests.
   await send('Page.addScriptToEvaluateOnNewDocument', { source: `
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (url, options) => String(url).startsWith('https://geocode.googleapis.com/')
+      ? Promise.resolve(new Response(JSON.stringify({results:[{formattedAddress:'12 Hospital Road, Colombo'}]}),{status:window.qaGeocodeFailure ? 403 : 200,headers:{'Content-Type':'application/json'}}))
+      : originalFetch(url, options);
     window.google = { maps: {
       Map: class {
         constructor(host) { host.textContent = 'Google Maps test surface'; }
         panTo(point) { window.qaMapPosition = point; }
         addListener(name, callback) { window.qaMapClick = callback; return { remove() { window.qaMapClick = null; } }; }
       },
+      places: { Place: class {
+        constructor(options) { this.id = options.id; }
+        async fetchFields() { this.displayName = 'Colombo Test Blood Bank'; this.formattedAddress = '12 Hospital Road, Colombo'; }
+        static async searchByText(options) {
+          window.qaPlaceQuery = options;
+          return { places: [{ id:'qa-bank-place',displayName:'Colombo Test Blood Bank',formattedAddress:'12 Hospital Road, Colombo',location:{lat:()=>6.9271,lng:()=>79.8612} }] };
+        }
+      } },
       marker: { AdvancedMarkerElement: class {
         constructor(options) { this.position = options.position; this.map = options.map; }
         addListener(name, callback) { window.qaMarkerDrag = callback; return { remove() { window.qaMarkerDrag = null; } }; }
@@ -156,14 +168,42 @@ try {
   await fill('.search-box input', ''); await click('Add blood bank');
   await fill('[name="name"]', 'QA New Blood Bank'); await fill('[name="district"]', 'Colombo');
   await fill('[name="contactEmail"]', 'qa.bank@example.com'); await fill('[name="contactPhone"]', '+94112345678');
-  await fill('[name="address"]', '12 Hospital Road, Colombo');
+  assert.equal(await evaluate(`!!document.querySelector('[name="address"]')`),false,'Bank address is provided only by map selection');
   const primaryId = await evaluate(`[...document.querySelector('[name="accountId"]').options].find(option => option.text === 'qa.bank.login@example.com').value`);
   await fill('[name="accountId"]', primaryId);
   await wait(`typeof window.qaMapClick === 'function'`);
-  await evaluate(`window.qaMapClick({ latLng: { lat: () => 6.9271, lng: () => 79.8612 } })`);
+  await click('Search'); await wait(`document.querySelector('.location-results button')`);
+  await evaluate(`document.querySelector('.location-results button').click()`);
+  assert.equal(await evaluate(`document.querySelector('[name="latitude"]').value`), '', 'Search selection is a draft until confirmed');
+  await click('Add blood bank'); await wait(`document.querySelector('[role="alert"]')?.textContent.includes('Confirm the bank location')`);
+  await shot('bank-location-confirmation');
+  for (const size of [320,390]) { await width(size); assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth + 1'),'Location selection fits narrow screens'); }
+  await width(1440);
+  await click('Confirm this location');
   await wait(`document.querySelector('[name="latitude"]').value === '6.9271000'`);
+  assert.ok(await evaluate(`document.querySelector('.location-summary').textContent.includes('12 Hospital Road, Colombo')`),'Confirmed place address appears in the location summary');
+  assert.equal(await evaluate(`!!document.querySelector('.location-editor')`),false,'Confirmation closes the map panel');
+  await click('Change location'); await wait(`typeof window.qaMapClick === 'function'`);
+  await evaluate(`window.qaMapClick({ latLng: { lat: () => 6.9271, lng: () => 79.8612 } })`);
+  await wait(`document.querySelector('.location-confirmation textarea')?.value.length > 0`);
   await evaluate(`window.qaMarkerDrag({ latLng: { lat: () => 6.93, lng: () => 79.87 } })`);
+  await wait(`!document.querySelector('.location-confirmation .button').disabled`);
+  assert.equal(await evaluate(`document.querySelector('[name="longitude"]').value`),'79.8612000','Dragging does not overwrite confirmed coordinates');
+  await click('Confirm this location');
   await wait(`document.querySelector('[name="longitude"]').value === '79.8700000'`);
+  await click('Change location'); await wait(`typeof window.qaMapClick === 'function'`);
+  await evaluate(`window.qaMapClick({ latLng: { lat: () => 6.94, lng: () => 79.88 } })`);
+  await click('Cancel location selection');
+  assert.equal(await evaluate(`document.querySelector('[name="longitude"]').value`),'79.8700000','Cancel preserves the confirmed location');
+  await click('Change location'); await wait(`typeof window.qaMapClick === 'function'`);
+  await evaluate(`window.qaMapClick({latLng:{lat:()=>6.836,lng:()=>87.984673}})`);
+  await wait(`document.querySelector('[role="alert"]')?.textContent.includes('Sri Lanka')`);
+  assert.equal(await evaluate(`document.querySelector('[name="longitude"]').value`),'79.8700000','Out-of-country pin does not change the bank location');
+  await evaluate(`window.qaGeocodeFailure=true;window.qaMapClick({latLng:{lat:()=>6.93,lng:()=>79.87}})`);
+  await wait(`document.querySelector('.location-editor [role="status"]')?.textContent.includes('address could not be retrieved')`);
+  assert.ok(await evaluate(`document.querySelector('.location-confirmation .button').disabled`),'Missing address requires explicit entry');
+  await fill('[aria-label="Address for selected location"]','12 Hospital Road, Colombo'); await click('Confirm this location');
+  await evaluate(`window.qaGeocodeFailure=false`);
   await shot('bank-onboarding-desktop');
   await width(390); assert.ok(await evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'Bank onboarding fits mobile'); await shot('bank-onboarding-mobile'); await width(1440);
   // Native dialogs keep keyboard focus within the active modal.
@@ -199,17 +239,16 @@ try {
   await click('Staff'); await wait(`document.querySelector('dialog').innerText.includes('qa.bank.login@example.com')`);
   await click('Requests'); await wait(`document.body.innerText.includes('No active requests')`);
   await click('Suspend access'); await click('Suspend institution'); await wait(`!document.querySelector('dialog[open]')`);
-  await click('QA Updated Blood Bank'); await click('Reactivate access'); await click('Reactivate institution'); await wait(`!document.querySelector('dialog[open]')`);
+  await click('QA Updated Blood Bank'); await click('Reactivate access'); await click('Reactivate access'); await wait(`!document.querySelector('dialog[open]')`);
   console.log('PASS: Bank editing, scoped detail tabs, suspension and reactivation');
 
   await evaluate(`window.qaCsv = null; window.qaOriginalClick = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function() { if (this.download) window.qaCsv = fetch(this.href).then(r=>r.text()); else window.qaOriginalClick.call(this); };`);
   await click('Export CSV'); const csv = await evaluate('window.qaCsv');
   assert.ok(csv.includes('QA Updated Blood Bank') && !csv.includes('National Blood Centre'));
   console.log('PASS: CSV export contains only filtered institutions');
-  await go('/approvals'); await click('Donor documents'); await click('Reject');
-  await fill('[name="reason"]', 'Please supply a readable document.'); await click('Reject submission');
-  await wait(`!document.querySelector('dialog[open]')`); assert.ok(await evaluate(`document.body.innerText.includes('No donor documents pending')`));
-  console.log('PASS: Donor document rejection');
+  await go('/blood-requests'); await wait(`document.querySelector('h1')?.textContent === 'Blood request approvals'`);
+  assert.ok(await evaluate(`document.body.innerText.includes('No requests in this queue')`));
+  console.log('PASS: Current request approval workspace renders its empty queue');
 
   await go('/bank-accounts'); await click('Create bank account');
   await fill('[name="accountEmail"]', 'qa.standalone@example.com'); await fill('[name="password"]', 'StandalonePassword123!');
@@ -217,16 +256,18 @@ try {
   await wait(`document.querySelector('dialog h2')?.textContent === 'Add a blood bank'`);
   assert.ok(await evaluate(`document.querySelector('[name="accountId"]').selectedOptions[0].text === 'qa.standalone@example.com'`), 'Account creation shortcut preselects the account in bank registration');
   assert.equal(await evaluate(`!!document.querySelector('[name="parentOrganizationId"], [name="branchName"]')`), false, 'Bank registration does not offer parent-bank or branch fields');
-  await fill('[name="name"]', 'QA Colombo Blood Bank'); await fill('[name="district"]', 'Colombo'); await fill('[name="address"]', 'Colombo blood bank address');
+  await fill('[name="name"]', 'QA Colombo Blood Bank'); await fill('[name="district"]', 'Colombo');
   await wait(`typeof window.qaMapClick === 'function'`); await evaluate(`window.qaMapClick({ latLng: { lat: () => 6.92, lng: () => 79.86 } })`);
+  await wait(`document.querySelector('.location-confirmation textarea')?.value.length > 0`); await click('Confirm this location');
   await click('Add blood bank'); await wait(`document.querySelector('dialog h2')?.textContent === 'Blood bank account ready'`); await click('Done');
   await fill('.search-box input', 'QA Colombo Blood Bank'); await wait(`document.querySelector('tbody')?.innerText.includes('QA Colombo Blood Bank')`);
   await click('QA Colombo Blood Bank');
+  assert.ok(await evaluate(`document.querySelector('dialog').textContent.includes('12 Hospital Road, Colombo')`),'Bank submission persists the address confirmed in the map picker');
   assert.ok(await evaluate(`document.querySelector('dialog a[href*="google.com/maps"]').href.includes('6.92')`), 'Saved location opens Google Maps');
   await evaluate(`document.querySelector('dialog [aria-label="Close dialog"]').click()`);
   console.log('PASS: Standalone bank registration, automatic bank code and saved Google Maps location');
 
-  for (const page of ['', '/blood-banks', '/approvals', '/bank-accounts']) {
+  for (const page of ['', '/blood-banks', '/blood-requests', '/bank-accounts']) {
     await go(page);
     for (const size of [320, 390, 768, 1024, 1440]) {
       await width(size);
@@ -238,7 +279,7 @@ try {
   await go(''); await width(390); await shot('overview-mobile');
   await evaluate(`document.querySelector('[aria-label="Open navigation"]').click()`); await wait(`document.querySelector('.sidebar-open')`);
   await evaluate(`document.querySelector('nav a[href="/admin/blood-banks"]').click()`); await wait(`!document.querySelector('.sidebar-open')`);
-  await width(1440); await shot('directory-desktop'); await go('/approvals'); await shot('approvals-desktop');
+  await width(1440); await shot('directory-desktop'); await go('/blood-requests'); await shot('approvals-desktop');
   assert.equal(await evaluate('localStorage.length + sessionStorage.length'), 0, 'Auth tokens never enter browser storage');
   assert.ok(backendCalls.length > 0, 'Dashboard uses HTTP authentication and API requests');
   assert.ok(backendCalls.every(url => intercepted.includes(url)), 'Every API request uses the isolated test server');

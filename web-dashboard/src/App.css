@@ -2465,7 +2465,23 @@ td small {
 .password-field .icon-button { position:absolute; right:5px; }
 .location-picker { border:1px solid var(--line); border-radius:10px; padding:14px; background:#fafbfe; }
 .location-map { height:280px; width:100%; border-radius:8px; overflow:hidden; background:#edf1f7; }
-.location-map:empty { display:none; }
+.location-editor { display:grid; gap:14px; }
+.location-search { display:flex; align-items:flex-end; gap:10px; }
+.location-search>label { flex:1; min-width:0; }
+.location-search .button { flex-shrink:0; }
+.location-results { list-style:none; padding:0; margin:0; display:grid; gap:6px; max-height:240px; overflow:auto; }
+.location-results button { display:flex; gap:10px; width:100%; text-align:left; border:1px solid var(--line); border-radius:8px; padding:12px; background:white; color:inherit; cursor:pointer; }
+.location-results button:hover,.location-results button:focus-visible { border-color:var(--red); background:#fff8fa; }
+.location-results svg { flex-shrink:0; margin-top:2px; color:var(--red); }
+.location-results strong,.location-results small { display:block; overflow-wrap:anywhere; }
+.location-results small { margin-top:4px; color:var(--muted); line-height:1.5; }
+.location-confirmation { padding:16px; background:white; border:1px solid #d6e4dd; border-radius:8px; display:grid; gap:12px; }
+.location-confirmation>p { margin:0; display:flex; align-items:center; gap:8px; }
+.location-confirmation>.button { justify-self:start; }
+.location-summary { display:flex; align-items:flex-start; flex-wrap:wrap; gap:12px; }
+.location-summary>svg { color:var(--red); flex-shrink:0; }
+.location-summary>div { flex:1; min-width:180px; overflow-wrap:anywhere; }
+.location-summary p { margin:6px 0 10px; line-height:1.6; }
 .location-message { display:flex; align-items:center; gap:12px; padding:20px 5px; color:#727d93; line-height:1.7; font-size:12px; }
 .location-message p { margin:0; }
 .location-message svg { flex-shrink:0; }

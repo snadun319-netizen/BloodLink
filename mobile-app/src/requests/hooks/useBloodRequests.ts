@@ -1,6 +1,7 @@
 // src/requests/hooks/useBloodRequests.ts
 import { useState, useEffect, useCallback } from 'react';
 import { Alert, Linking } from 'react-native';
+import { bankDirectionsUrl } from '../utils/directions';
 import { RequestTabType, RequestsData, AlertRequestItem } from '../types/requests';
 import {
   fetchRequestsData,
@@ -68,16 +69,20 @@ export function useBloodRequests(initialTab: RequestTabType = 'alerts') {
   };
 
   const handleOpenDirections = () => {
-    const hospital = data?.activeMission?.hospitalName || 'Sabaragamuwa General Hospital';
+    const mission = data?.activeMission;
+    const url = bankDirectionsUrl(mission?.location);
+    if (!mission || !url) {
+      Alert.alert('Bank location unavailable', 'Contact the donation coordinator for the bank location.');
+      return;
+    }
     Alert.alert(
-      'Navigation Route',
-      `Opening GPS turn-by-turn directions to ${hospital}...`,
+      'Directions to blood bank',
+      `Open directions to ${mission.hospitalName}${mission.address ? ` at ${mission.address}` : ''}?`,
       [
         {
           text: 'Open Maps',
           onPress: () => {
-            const query = encodeURIComponent(`${hospital}, Sri Lanka`);
-            Linking.openURL(`https://maps.google.com/?q=${query}`).catch(() => {
+            Linking.openURL(url).catch(() => {
               Alert.alert('Map Unavailable', 'Unable to launch map application.');
             });
           },

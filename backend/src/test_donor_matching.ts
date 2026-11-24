@@ -147,6 +147,8 @@ async function main() {
   assert.ok(!(await api('/api/notifications',undefined,remoteToken)).data.some((n:any)=>n.requestId===String(requestId)));
   assert.equal((await api(`/api/requests/${requestId}/respond`,{status:'accepted'},remoteToken)).status,409);
   assert.equal((await api(`/api/requests/${requestId}/respond`,{status:'accepted'},localToken)).status,200);
+  const mission = (await api('/api/requests/me',undefined,localToken)).data.activeMission;
+  assert.deepEqual(mission.location,{latitude:Number(ratnapura.latitude),longitude:Number(ratnapura.longitude)},'Directions use the accepted request bank coordinates');
   const unavailable = donorFor(ratnapura,'unavailable');
   const unavailableToken = await login(unavailable.email);
   assert.equal((await api('/api/donors/requests',undefined,unavailableToken)).data.requests.length,0);

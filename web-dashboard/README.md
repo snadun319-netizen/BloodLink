@@ -61,9 +61,32 @@ VITE_GOOGLE_MAPS_API_KEY=your_browser_maps_key
 VITE_GOOGLE_MAPS_MAP_ID=your_map_id
 ```
 
-Enable Maps JavaScript API and billing for the browser key, restrict it to your web origins and that API, and restart Vite. A map ID is optional locally (Google's demo map ID is used); supply your own for deployment. See [Google Maps setup](https://developers.google.com/maps/documentation/javascript/adding-a-google-map).
+For local prototyping, a [Maps Demo Key](https://developers.google.com/maps/demo-key)
+supports maps, place search/details and Geocoding v4 without billing. Demo keys have
+daily usage limits and are not intended for production. Keep the key in ignored
+`.env.local`; never paste it into source code. Restart Vite after changing it.
+For production, configure a billing-enabled browser key with Maps JavaScript API,
+Places API (New), and Geocoding API v4, restricted to your web origins and those APIs.
+A map ID is optional locally (Google's demo map ID is used); supply your own for deployment.
+See [Google Maps setup](https://developers.google.com/maps/documentation/javascript/adding-a-google-map).
 
-Click the map to select a bank location or drag its pin. Coordinates remain editable, and the form also supports current location and opening Google Maps. When no key is configured or Maps fails, use the Google Maps link and enter both coordinates. No server API keys are copied into frontend configuration.
+In the bank form, search for the bank or hospital, select a result, review the name,
+address and pin, then click **Confirm this location**. Confirmation stores the bank
+address automatically, saves the coordinates in hidden form fields and closes the map
+panel. The address appears in the selected-location summary; there is no separate
+address entry field in the bank details form.
+**Change location** reopens it. Clicking a place label retrieves its details; clicking
+an unlabelled point or dragging the marker looks up its address with Geocoding v4.
+Move the pin to the entrance donors should use. If address lookup fails, enter the
+address in the confirmation panel. Cancelling preserves the original address/pin;
+unconfirmed changes cannot be submitted with the bank form. Searches are submitted
+explicitly, not on every keystroke. Coordinates no longer require manual entry.
+
+The donor's active mission receives the bank's stored address and coordinates from
+the API. **Directions** opens Google Maps navigation to this exact destination;
+an institution name search or a default hospital is never substituted for a missing
+pin. If the bank has no coordinates, the donor is asked to contact the coordinator.
+This navigation link needs no additional key or routing API integration.
 
 ## Other workflows
 
